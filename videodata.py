@@ -50,6 +50,3 @@ def fetch_video_analytics(video_links):
         })
 
     return analytics_data
-
-
-print("✅ videodata.py loaded successfully")
