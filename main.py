@@ -1,63 +1,67 @@
-import streamlit as st
-import channel
-from video import get_10_recent_videos  
-from channel import get_channel_id_from_url, fetch_channel_data  
-from videodata import API_KEY, fetch_video_analytics
-from videodata import extract_video_id
+from video import get_10_recent_videos
+from channel import get_channel_id_from_url, fetch_channel_data
+from videodata import fetch_video_analytics
 from supabase import create_client
+from analytics import calculate_video_metrics, update_channel_avg_engagement
+
+# =========================
+# SUPABASE CONFIG
+# =========================
 
 SUPABASE_URL = "https://serbtdravevbbklvqgpw.supabase.co"
-SUPABASE_KEY = "sb_publishable_G9tKAh28b-498MFnvkfKXQ_LwIhPKE6"
+SUPABASE_KEY = ""
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# =========================
+# USER INPUT
+# =========================
 
-channel_name = input("Enter YouTube Channel Name: ")
-channel_info = fetch_channel_data(get_channel_id_from_url(channel_name))
+channel_input = input("Enter YouTube Channel URL or Name: ")
 
-if channel_info:
-    print("\n✅ Channel Info:")
-    for key, value in channel_info.items():
-        print(f"{key.replace('_',' ').title()}: {value}")
+# =========================
+# FETCH CHANNEL DATA
+# =========================
 
-videos = get_10_recent_videos(channel_name)
-i = 0
-if videos:
-    print(f"\n✅ Total videos fetched: {len(videos)}\n")
-    for v in videos:
-        print(f"{i}: {v}")
-        i += 1
-else:
-    print("❌ No videos found (check channel name)")
+channel_id = get_channel_id_from_url(channel_input)
+channel_info = fetch_channel_data(channel_id)
 
-channel_info = fetch_channel_data(get_channel_id_from_url(channel_name))
-if channel_info:
-    print(f"\n✅ Channel Info:")
-    print(f"Name: {channel_info['channel_name']}")
-    print(f"Description: {channel_info['description']}")
-    print(f"Published At: {channel_info['published_at']}")
-    print(f"Subscribers: {channel_info['subscriber_count']}")
-    print(f"Total Views: {channel_info['view_count']}")
-    print(f"Total Videos: {channel_info['video_count']}")   
+if not channel_info:
+    print("❌ Channel not found")
+    exit()
 
-video_ids = []
-for link in videos:
-    video_id = extract_video_id(link)
-    if video_id:
-        video_ids.append(video_id)
+
+# =========================
+# FETCH CHANNEL DATA FROM DB
+# =========================
+
+channel_db = (
+    supabase
+    .table("channel_info")
+    .select("*")
+    .eq("channel_id", channel_id)
+    .execute()
+)
+
+print("\n📺 Channel Data From Database:")
+
+for row in channel_db.data:
+    print("--------------------------------------------------")
+    print(f"Channel Name: {row['channel_name']}")
+    print(f"Subscribers: {row['subscriber_count']}")
+    print(f"Total Views: {row['view_count']}")
+    print(f"Total Videos: {row['video_count']}")
+    print(f"Published At: {row['published_at']}")
     
-analytics = fetch_video_analytics(videos)
+    # Optional metrics if columns exist
+    if row.get("avg_engagement_rate") is not None:
+        print(f"Avg Engagement: {round(row['avg_engagement_rate'], 2)}%")
 
-if analytics:
-    print("\n📊 Video Analytics:")
-    for data in analytics:
-        print("--------------------------------")
-        print(f"Title: {data['title']}")
-        print(f"Views: {data['view_count']}")
-        print(f"Likes: {data['like_count']}")
-        print(f"Comments: {data['comment_count']}")
-else:
-    print("❌ No analytics data received")
+    if row.get("upload_frequency") is not None:
+        print(f"Upload Frequency: {round(row['upload_frequency'], 2)} videos/month")
+# =========================
+# STORE CHANNEL DATA
+# =========================
 
 channel_data = {
     "channel_id": channel_info["channel_id"],
@@ -70,34 +74,127 @@ channel_data = {
 }
 
 
+
 supabase.table("channel_info").upsert(channel_data).execute()
 
+print("\n✅ Channel data stored successfully")
+
+# =========================
+# FETCH RECENT VIDEOS
+# =========================
+
+videos = get_10_recent_videos(channel_input)
+
+if not videos:
+    print("❌ No videos found")
+    exit()
+
+print(f"\n✅ {len(videos)} Videos Fetched")
+
+# =========================
+# FETCH VIDEO ANALYTICS
+# =========================
 
 analytics = fetch_video_analytics(videos)
 
-def store_video_data(analytics_data, channel_id):
+if not analytics:
+    print("❌ No analytics data received")
+    exit()
 
-    cleaned_data = []
+# =========================
+# STORE VIDEO ANALYTICS
+# =========================
 
-    for video in analytics_data:
-        cleaned_data.append({
-            "video_id": video["video_id"],
-            "channel_id": channel_id,
-            "title": video["title"],
-            "published_at": video["published_at"],
-            "duration": video["duration"],
-            "view_count": int(video.get("view_count", 0)),
-            "like_count": int(video.get("like_count", 0)),
-            "comment_count": int(video.get("comment_count", 0))
-        })
+subscriber_count = int(channel_info["subscriber_count"])
 
-    response = supabase.table("video_analytics").upsert(cleaned_data).execute()
+cleaned_data = []
 
-    print("\n✅ Video analytics data stored in Supabase:")
+for video in analytics:   # ✅ fixed here
+
+    video_id = video["video_id"]
+    view_count = int(video.get("view_count", 0))
+    like_count = int(video.get("like_count", 0))
+    comment_count = int(video.get("comment_count", 0))
+
+    # 🔥 Call external function
+    metrics = calculate_video_metrics(video, subscriber_count)
+
+    cleaned_data.append({
+        "video_id": video_id,
+        "channel_id": channel_id,
+        "title": video["title"],
+        "published_at": video["published_at"],
+        "duration": video["duration"],
+        "view_count": view_count,
+        "like_count": like_count,
+        "comment_count": comment_count,
+
+        # calculated values
+        "like_ratio": metrics["like_ratio"],
+        "comment_ratio": metrics["comment_ratio"],
+        "total_engagement_rate": metrics["total_engagement_rate"],
+        "view_subscriber_ratio": metrics["view_subscriber_ratio"],
+        "engagement_per_1000": metrics["engagement_per_1000"],
+        "like_comment_ratio": metrics["like_comment_ratio"]
+    })
+
+# ✅ Actually store in Supabase 
+
+supabase.table("video_analytics").upsert(cleaned_data).execute()
+
+print("✅ Video analytics stored successfully")
+
+update_channel_avg_engagement(supabase, channel_id)
 
 
-analytics = fetch_video_analytics(videos)
-store_video_data(analytics, channel_info["channel_id"])
 
-supabase.table("video_analytics").select("*").eq("channel_id", channel_info["channel_id"])
+# =========================
+# FETCH LATEST CHANNEL DATA
+# =========================
+
+channel_db = (
+    supabase
+    .table("channel_info")
+    .select("*")
+    .eq("channel_id", channel_id)
+    .execute()
+)
+
+print("\n================ CHANNEL SUMMARY ================")
+
+for row in channel_db.data:
+    print(f"Channel Name: {row['channel_name']}")
+    print(f"Subscribers: {row['subscriber_count']}")
+    print(f"Total Views: {row['view_count']}")
+    print(f"Total Videos: {row['video_count']}")
+    print(f"Published At: {row['published_at']}")
+
+    if row.get("avg_engagement_rate") is not None:
+        print(f"Avg Engagement: {round(row['avg_engagement_rate'], 2)}%")
+# =========================
+# FETCH STORED DATA FROM DB
+# =========================
+
+stored_data = (
+    supabase
+    .table("video_analytics")
+    .select("*")
+    .eq("channel_id", channel_info["channel_id"])
+    .execute()
+)
+
+print("\n📦 Stored Data From Database:")
+for row in stored_data.data:
+    print("--------------------------------------------------")
+    print(f"Title: {row['title']}")
+    print(f"Views: {row['view_count']}")
+    print(f"Likes: {row['like_count']}")
+    print(f"Comments: {row['comment_count']}")
+    print(f"Like Ratio: {round(row['like_ratio'], 2)}%")
+    print(f"Comment Ratio: {round(row['comment_ratio'], 2)}%")
+    print(f"Engagement Rate: {round(row['total_engagement_rate'], 2)}%")
+    print(f"View/Sub Ratio: {round(row['view_subscriber_ratio'], 2)}%")
+    print(f"Engagement per 1000: {round(row['engagement_per_1000'], 2)}")
+    print(f"Like/Comment Ratio: {round(row['like_comment_ratio'], 2)}")
+    print()
 
