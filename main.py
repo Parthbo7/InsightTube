@@ -3,14 +3,19 @@ from channel import get_channel_id_from_url, fetch_channel_data
 from videodata import fetch_video_analytics
 from supabase import create_client
 from analytics import calculate_video_metrics, update_channel_avg_engagement
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 
 # =========================
 # SUPABASE CONFIG
 # =========================
 
 SUPABASE_URL = "https://serbtdravevbbklvqgpw.supabase.co"
-SUPABASE_KEY = ""
-
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =========================
