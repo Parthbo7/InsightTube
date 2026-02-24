@@ -1,0 +1,8 @@
+streamlit
+google-api-python-client
+requests
+supabase
+pandas
+plotly
+matplotlib
+altair
