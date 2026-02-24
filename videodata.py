@@ -18,8 +18,8 @@ def extract_video_id(url):
 
 
 def fetch_video_analytics(video_links):
-    if len(video_links) > 10:
-        raise ValueError("Maximum 10 YouTube links allowed")
+    if len(video_links) > 20:
+        raise ValueError("Maximum 20 YouTube links allowed")
 
     video_ids = [extract_video_id(link) for link in video_links]
     video_ids = [vid for vid in video_ids if vid]

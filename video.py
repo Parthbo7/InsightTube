@@ -37,7 +37,7 @@ def get_10_recent_videos(channel_name):
     playlist_response = youtube.playlistItems().list(
         playlistId=uploads_playlist,
         part="snippet",
-        maxResults=10
+        maxResults=20
     ).execute()
 
     video_links = []
