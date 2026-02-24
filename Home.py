@@ -98,6 +98,6 @@ InsightTube helps creators and analysts:
 
 st.divider()
 
-st.caption("© 2026 InsightTube | Built with Streamlit 💙")
+st.caption("© 2026 InsightTube | Built with Streamlit 💙 | pbo7  ")
 
 

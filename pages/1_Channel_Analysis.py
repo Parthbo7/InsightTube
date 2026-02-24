@@ -193,6 +193,8 @@ def run_full_channel_analysis_and_display(channel_input):
         use_container_width=True
     )
     st.divider()
+
+    
     st.subheader("📊 Likes and Comments per Video")
     chart_df = pd.DataFrame({
     "Video Index": range(1, len(df) + 1),
