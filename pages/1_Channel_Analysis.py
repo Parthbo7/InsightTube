@@ -478,7 +478,7 @@ def run_full_channel_analysis_and_display(channel_input):
     #Best Performing Video Analysis
     #---------------------------------------------------
       
-    st.title("🏆 Best Performing Video Analyzer")
+    st.title("🏆 Best Performing Recent Video Analyzer")
 
     df = pd.DataFrame(video_analytics)
 
