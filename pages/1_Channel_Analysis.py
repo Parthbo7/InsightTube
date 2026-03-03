@@ -30,6 +30,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+subscriber_watch_percent = 0
+upload_frequency = 0
+duration_counts = pd.DataFrame()
 
 supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
@@ -472,6 +475,8 @@ def run_full_channel_analysis_and_display(channel_input):
 
     st.plotly_chart(fig_freq, use_container_width=True)
 
+
+
     
 
 
@@ -518,7 +523,63 @@ def run_full_channel_analysis_and_display(channel_input):
         st.metric("Views / Subscriber Ratio", f"{best_video['view_subscriber_ratio']:.2f}")
         st.metric("Performance Score", f"{best_video['performance_score']:.2f}")
 
-        
+    # ---------------------------------------------------
+    # 💡 AI-Based Channel Insights
+    # ---------------------------------------------------
+    st.divider()
+    st.subheader("💡 Channel Insights & Strategy Suggestions")
+
+    insights = []
+
+    avg_views = df["view_count"].mean()
+    avg_likes = df["like_count"].mean()
+    avg_comments = df["comment_count"].mean()
+    avg_engagement = df["total_engagement_rate"].mean()
+
+    # 1️⃣ Engagement Insight
+    if avg_engagement > 8:
+        insights.append("🔥 Excellent engagement rate. Audience is highly interactive.")
+    elif avg_engagement > 4:
+        insights.append("📈 Good engagement. There is room for stronger CTAs.")
+    else:
+        insights.append("⚠️ Low engagement. Improve thumbnails, hooks, and call-to-actions.")
+
+    # 2️⃣ Subscriber Watch Behavior
+    if subscriber_watch_percent > 40:
+        insights.append("💪 Strong subscriber loyalty. Majority of subscribers actively watch.")
+    elif subscriber_watch_percent > 20:
+        insights.append("🤝 Moderate subscriber watching pattern.")
+    else:
+        insights.append("❗ Many subscribers are inactive. Focus on retention strategies.")
+
+    # 3️⃣ Upload Consistency Insight
+    if upload_frequency >= 8:
+        insights.append("🔥 Highly active creator. Algorithm favors this consistency.")
+    elif upload_frequency >= 4:
+        insights.append("📅 Good upload consistency.")
+    else:
+        insights.append("😴 Upload frequency is low. Increase consistency to grow faster.")
+
+    # 4️⃣ Duration Insight
+    most_common_duration = duration_counts.iloc[0]["Category"]
+
+    if most_common_duration == "Short (<2 min)":
+        insights.append("📱 Channel focuses on short-form content. Shorts strategy detected.")
+    elif most_common_duration == "Medium (1–10 min)":
+        insights.append("🎬 Balanced content length. Optimized for regular YouTube videos.")
+    else:
+        insights.append("🎥 Long-form content dominant. Great for deep audience retention.")
+
+    # 5️⃣ Top Video Performance Gap
+    top_views = df["view_count"].max()
+
+    if top_views > avg_views * 1.8:
+        insights.append("🚀 One video significantly outperformed others. Analyze and replicate its format.")
+
+    # Display Insights
+    for insight in insights:
+        st.success(insight)        
+    
 
 
 
@@ -587,8 +648,7 @@ def run_full_channel_analysis_and_display(channel_input):
     
     st.divider()
       
-    st.caption("© 2026 InsightTube | Built with Streamlit 💙")
-
+  
 
 
 if st.button("Analyze Channel"):
@@ -597,5 +657,23 @@ if st.button("Analyze Channel"):
         st.toast("Channel analysis completed!", icon="✅")
     else:
         st.warning("Please enter a valid channel URL or ID.")
-       
         
+st.markdown("""
+<style>
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #0E1117;
+    color: white;
+    text-align: right;
+    padding: 10px;
+    font-size: 14px;
+}
+</style>
+
+<div class="footer">
+    © 2026 InsightTube | Built with Streamlit 💙 | Pbo7
+</div>
+""", unsafe_allow_html=True)

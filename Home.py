@@ -98,6 +98,23 @@ InsightTube helps creators and analysts:
 
 st.divider()
 
-st.caption("© 2026 InsightTube | Built with Streamlit 💙 | pbo7  ")
+st.markdown("""
+<style>
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #0E1117;
+    color: white;
+    text-align: right;
+    padding: 10px;
+    font-size: 14px;
+}
+</style>
 
+<div class="footer">
+    © 2026 InsightTube | Built with Streamlit 💙 | Pbo7
+</div>
+""", unsafe_allow_html=True)
 

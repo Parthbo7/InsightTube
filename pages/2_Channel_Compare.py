@@ -1,3 +1,5 @@
+import altair as alt
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -105,6 +107,44 @@ if "info1" in st.session_state and "info2" in st.session_state:
                 use_container_width=True
             )
          st.divider()
+        df = pd.DataFrame(data1)
+
+        st.subheader("📊 Likes and Comments per Video")
+
+            # Create chart dataframe using actual video title
+        chart_df = df[["title", "like_count", "comment_count"]].copy()
+
+            # Base chart
+        base = alt.Chart(chart_df).encode(
+                x=alt.X("title:N", title="Video Title", sort=None)
+            )
+
+            # Likes line
+        likes_line = base.mark_line(
+                color="#FF0000",
+                size=3
+            ).encode(
+                y=alt.Y("like_count:Q", title="Count"),
+                tooltip=["title", "like_count"]
+            )
+
+            # Comments line
+        comments_line = base.mark_line(
+                color="#8B0000",
+                size=3
+            ).encode(
+                y=alt.Y("comment_count:Q"),
+                tooltip=["title", "comment_count"]
+            )
+
+            # Rotate labels so they don’t overlap
+        final_chart = (likes_line + comments_line).properties(
+                height=400
+            ).configure_axisX(
+                labelAngle=-45
+            )
+
+        st.altair_chart(final_chart, use_container_width=True)
 
        
 
@@ -135,10 +175,66 @@ if "info1" in st.session_state and "info2" in st.session_state:
                 use_container_width=True
             )
          st.divider()
+        df = pd.DataFrame(data2)
+
+        st.subheader("📊 Likes and Comments per Video")
+
+            # Create chart dataframe using actual video title
+        chart_df = df[["title", "like_count", "comment_count"]].copy()
+
+            # Base chart
+        base = alt.Chart(chart_df).encode(
+                x=alt.X("title:N", title="Video Title", sort=None)
+            )
+
+            # Likes line
+        likes_line = base.mark_line(
+                color="#FF0000",
+                size=3
+            ).encode(
+                y=alt.Y("like_count:Q", title="Count"),
+                tooltip=["title", "like_count"]
+            )
+
+            # Comments line
+        comments_line = base.mark_line(
+                color="#8B0000",
+                size=3
+            ).encode(
+                y=alt.Y("comment_count:Q"),
+                tooltip=["title", "comment_count"]
+            )
+
+            # Rotate labels so they don’t overlap
+        final_chart = (likes_line + comments_line).properties(
+                height=400
+            ).configure_axisX(
+                labelAngle=-45
+            )
+
+        st.altair_chart(final_chart, use_container_width=True)
+
     
 
 
 
 
-st.divider()
-st.caption("© 2026 InsightTube | Built with Streamlit 💙")
+st.markdown("""
+<style>
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #0E1117;
+    color: white;
+    text-align: right;
+    padding: 10px;
+    font-size: 14px;
+}
+</style>
+
+<div class="footer">
+    © 2026 InsightTube | Built with Streamlit 💙 | Pbo7
+</div>
+""", unsafe_allow_html=True)
