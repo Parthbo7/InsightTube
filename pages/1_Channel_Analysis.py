@@ -474,17 +474,78 @@ def run_full_channel_analysis_and_display(channel_input):
     )
 
     st.plotly_chart(fig_freq, use_container_width=True)
+    # ---------------------------------------------------
+    # 💰 Revenue Estimation Module (INR)
+    # ---------------------------------------------------
+
+    def estimate_revenue(views, cpm, monetization_rate=0.55):
+        monetized_views = views * monetization_rate
+        revenue = (monetized_views / 1000) * cpm
+        return round(revenue, 2)
+
+    # USD → INR
+    USD_TO_INR = 83
+
+    cpm_low_usd = 3
+    cpm_high_usd = 10
+
+    cpm_low = cpm_low_usd * USD_TO_INR
+    cpm_high = cpm_high_usd * USD_TO_INR
+    avg_cpm = (cpm_low + cpm_high) / 2   # ← Now ALWAYS defined
 
 
+    if not df.empty and "view_count" in df.columns:
 
-    
+        total_recent_views = df["view_count"].sum()
 
+        low_estimate = estimate_revenue(total_recent_views, cpm_low)
+        high_estimate = estimate_revenue(total_recent_views, cpm_high)
+        monthly_estimate = estimate_revenue(total_recent_views, avg_cpm)
 
-    st.divider()
+        rpm = avg_cpm * 0.55
+
+        # ✅ Add revenue column safely
+        df["estimated_revenue"] = df["view_count"].apply(
+            lambda views: estimate_revenue(views, avg_cpm)
+        )
+
+        st.divider()
+        st.subheader("💰 Revenue Estimation Dashboard (INR)")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Estimated Revenue (Low)", f"₹ {low_estimate:,.2f}")
+        col2.metric("Estimated Revenue (High)", f"₹ {high_estimate:,.2f}")
+        col3.metric("Revenue per 1000 Views (RPM)", f"₹ {rpm:,.2f}")
+
+    else:
+        st.warning("Insufficient data to estimate revenue.")
+
+        st.divider()
+
+    st.subheader("📊 Estimated Revenue per Video (INR)")
+
+    # Sort by revenue
+    revenue_df = df.sort_values(by="estimated_revenue", ascending=False)
+
+    revenue_chart = alt.Chart(revenue_df).mark_bar(
+        color="#cc0000"
+    ).encode(
+        x=alt.X("title:N", sort="-y", title="Video Title"),
+        y=alt.Y("estimated_revenue:Q", title="Revenue (₹)"),
+        tooltip=[
+            alt.Tooltip("title", title="Video"),
+            alt.Tooltip("estimated_revenue", title="Revenue (₹)", format=",.2f")
+        ]
+    ).properties(
+        height=400
+    )
+
+    st.altair_chart(revenue_chart, use_container_width=True)
     #----------------------------------------------------
     #Best Performing Video Analysis
     #---------------------------------------------------
-      
+    st.divider()  
     st.title("🏆 Best Performing Recent Video Analyzer")
 
     df = pd.DataFrame(video_analytics)
