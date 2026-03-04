@@ -1,4 +1,5 @@
 import streamlit as st
+from supabase import create_client
 st.set_page_config(layout="wide")
 st.title("👨‍💻 About Us")
 st.divider()
@@ -7,7 +8,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
+supabase_url = st.secrets["SUPABASE_URL"]
+supabase_key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(supabase_url, supabase_key)
 st.markdown("""
 <style>
 .block-container {
@@ -135,3 +138,22 @@ st.markdown("""
     © 2026 InsightTube | Built with Streamlit 💙 | Pbo7
 </div>
 """, unsafe_allow_html=True)
+
+
+st.title("💡 Ideas & Feedback")
+name = st.text_input("Name")
+email = st.text_input("Email")
+message = st.text_area("Your Idea / Feedback")
+
+if st.button("Submit"):
+
+    data = {
+        "name": name,
+        "email": email,
+        "message": message
+    }
+
+    supabase.table("ideas_feedback").insert(data).execute()
+
+    st.success("Thanks! Your feedback was submitted.")
+    st.balloons()
