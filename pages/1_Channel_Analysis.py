@@ -161,9 +161,13 @@ def run_full_channel_analysis_and_display(channel_input):
     if not channel_info:
         st.error("Failed to fetch channel data.")
         return
+    
+    channel_name = channel_info["channel_name"]
+    channel_id = channel_info["channel_id"]
 
-    st.title(f"Channel Name: {channel_info['channel_name']}")
-    st.divider()
+    channel_url = f"https://www.youtube.com/channel/{channel_id}"
+
+    st.title(f" Channel: [{channel_name}]({channel_url})")
 
     col1, col2, col3 = st.columns(3)
 
