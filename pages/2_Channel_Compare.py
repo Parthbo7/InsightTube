@@ -3,6 +3,7 @@ import altair as alt
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from supabase_auth import datetime
 from services import run_full_channel_analysis
 
 
@@ -171,6 +172,7 @@ if "info1" in st.session_state and "info2" in st.session_state:
 
 
         st.subheader("👥 Subscriber Watch Percentage")  
+        st.divider()
         fig_subs = go.Figure(go.Indicator(
             mode="gauge+number",
             value=subscriber_watch_percent,
@@ -195,6 +197,70 @@ if "info1" in st.session_state and "info2" in st.session_state:
         )
 
         st.plotly_chart(fig_subs, use_container_width=True)
+        st.divider()
+        st.subheader("🔥 Upload Frequency Analysis")
+
+        try:
+            total_videos = int(info1["video_count"])
+            published_date = datetime.strptime(info1["published_at"][:10], "%Y-%m-%d").date()
+            current_date = datetime.now().date()
+
+            channel_age_months = (
+                (current_date.year - published_date.year) * 12
+                + (current_date.month - published_date.month)
+            )
+
+            if channel_age_months <= 0:
+                channel_age_months = 1
+
+            upload_frequency = total_videos / channel_age_months
+
+        except Exception:
+            channel_age_months = 1
+            upload_frequency = 0
+
+        # Classification Logic
+        def classify_creator(freq):
+            if freq < 1:
+                return "😴 Inactive"
+            elif freq < 4:
+                return "🎥 Casual"
+            elif freq < 8:
+                return "📈 Consistent"
+            else:
+                return "🔥 Highly Active"
+
+        creator_type = classify_creator(upload_frequency)
+
+        
+
+        
+        st.metric("Creator Type", creator_type)
+
+        # Gauge
+        fig_freq = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=upload_frequency,
+            title={"text": "Uploads per Month"},
+            gauge={
+                "axis": {"range": [0, 20]},
+                "bar": {"color": "red"},
+                "steps": [
+                        {"range": [0, 1], "color": "#ffcccc"},
+                        {"range": [1, 4], "color": "#ff9999"},
+                        {"range": [4, 8], "color": "#ff6666"},
+                        {"range": [8, 12], "color": "#ff3333"},
+                        {"range": [12, 20], "color": "#cc0000"},
+                ],
+            }
+        ))
+
+        fig_freq.update_layout(
+            margin=dict(l=10, r=10, t=80, b=10),
+            height=300,
+        )
+
+        st.plotly_chart(fig_freq, use_container_width=True)
 
 
 
@@ -276,6 +342,7 @@ if "info1" in st.session_state and "info2" in st.session_state:
             )
         except (ValueError, TypeError):
             subscriber_watch_percent = 0
+        st.divider()
         st.subheader("👥 Subscriber Watch Percentage")  
         fig_subs = go.Figure(go.Indicator(
             mode="gauge+number",
@@ -301,8 +368,68 @@ if "info1" in st.session_state and "info2" in st.session_state:
         )
 
         st.plotly_chart(fig_subs, use_container_width=True, key="subs_watch_2")
+        st.divider()
+        st.subheader("🔥 Upload Frequency Analysis")
 
+        try:
+            total_videos = int(info2["video_count"])
+            published_date = datetime.strptime(info2["published_at"][:10], "%Y-%m-%d").date()
+            current_date = datetime.now().date()
 
+            channel_age_months = (
+                (current_date.year - published_date.year) * 12
+                + (current_date.month - published_date.month)
+            )
+
+            if channel_age_months <= 0:
+                channel_age_months = 1
+
+            upload_frequency = total_videos / channel_age_months
+
+        except Exception:
+            channel_age_months = 1
+            upload_frequency = 0
+
+        # Classification Logic
+        def classify_creator(freq):
+            if freq < 1:
+                return "😴 Inactive"
+            elif freq < 4:
+                return "🎥 Casual"
+            elif freq < 8:
+                return "📈 Consistent"
+            else:
+                return "🔥 Highly Active"
+
+        creator_type = classify_creator(upload_frequency)
+
+        
+        st.metric("Creator Type", creator_type)
+
+        # Gauge
+        fig_freq = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=upload_frequency,
+            title={"text": "Uploads per Month"},
+            gauge={
+                "axis": {"range": [0, 20]},
+                "bar": {"color": "red"},
+                "steps": [
+                        {"range": [0, 1], "color": "#ffcccc"},
+                        {"range": [1, 4], "color": "#ff9999"},
+                        {"range": [4, 8], "color": "#ff6666"},
+                        {"range": [8, 12], "color": "#ff3333"},
+                        {"range": [12, 20], "color": "#cc0000"},
+                ],
+            }
+        ))
+
+        fig_freq.update_layout(
+            margin=dict(l=10, r=10, t=80, b=10),
+            height=300,
+        )
+
+        st.plotly_chart(fig_freq, use_container_width=True, key="upload_freq_2")
            
 
 
