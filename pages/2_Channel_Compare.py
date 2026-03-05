@@ -62,18 +62,29 @@ with col2:
 
 # Run analysis when button clicked
 compare_btn = st.button("Compare Channels 🚀")
+
 if compare_btn:
 
     if channel_1_input and channel_2_input:
 
-        info1, data1 = run_full_channel_analysis(channel_1_input)
-        info2, data2 = run_full_channel_analysis(channel_2_input)
+        with st.spinner("Analyzing channels... ⏳", show_time=True):
 
-        if info1 and info2:
-            st.session_state["info1"] = info1
-            st.session_state["data1"] = data1
-            st.session_state["info2"] = info2
-            st.session_state["data2"] = data2
+            info1, data1 = run_full_channel_analysis(channel_1_input)
+            info2, data2 = run_full_channel_analysis(channel_2_input)
+
+            if info1 and info2:
+                st.session_state["info1"] = info1
+                st.session_state["data1"] = data1
+                st.session_state["info2"] = info2
+                st.session_state["data2"] = data2
+
+                st.toast("Channel analysis completed! ✅")
+
+            else:
+                st.error("Failed to analyze one or both channels.")
+
+    else:
+        st.warning("Please enter both channel URLs or IDs.")
 
 if "info1" in st.session_state and "info2" in st.session_state:
 
@@ -143,8 +154,49 @@ if "info1" in st.session_state and "info2" in st.session_state:
             ).configure_axisX(
                 labelAngle=-45
             )
+        
 
+        df = pd.DataFrame(data1)
+
+        try:
+            average_views = float(df["view_count"].mean())
+            total_subscribers = int(info1["subscriber_count"])
+            subscriber_watch_percent = (
+                (average_views / total_subscribers) * 100
+                if total_subscribers > 0 else 0
+            )
+        except (ValueError, TypeError):
+            subscriber_watch_percent = 0
         st.altair_chart(final_chart, use_container_width=True)
+
+
+        st.subheader("👥 Subscriber Watch Percentage")  
+        fig_subs = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=subscriber_watch_percent,
+            number={"suffix": "%"},
+            title={"text": "Subscribers Who Watch (%)"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "red"},
+                "steps": [
+                    {"range": [0, 20], "color": "#ffcccc"},
+                    {"range": [20, 40], "color": "#ff9999"},
+                    {"range": [40, 60], "color": "#ff6666"},
+                    {"range": [60, 80], "color": "#ff3333"},
+                    {"range": [80, 100], "color": "#cc0000"},
+                ],
+            }
+        ))
+
+        fig_subs.update_layout(
+            margin=dict(l=10, r=10, t=80, b=10),
+            height=300,
+        )
+
+        st.plotly_chart(fig_subs, use_container_width=True)
+
+
 
        
 
@@ -213,9 +265,45 @@ if "info1" in st.session_state and "info2" in st.session_state:
             )
 
         st.altair_chart(final_chart, use_container_width=True)
+        df = pd.DataFrame(data2)
 
-    
+        try:
+            average_views = float(df["view_count"].mean())
+            total_subscribers = int(info2["subscriber_count"])
+            subscriber_watch_percent = (
+                (average_views / total_subscribers) * 100
+                if total_subscribers > 0 else 0
+            )
+        except (ValueError, TypeError):
+            subscriber_watch_percent = 0
+        st.subheader("👥 Subscriber Watch Percentage")  
+        fig_subs = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=subscriber_watch_percent,
+            number={"suffix": "%"},
+            title={"text": "Subscribers Who Watch (%)"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "red"},
+                "steps": [
+                    {"range": [0, 20], "color": "#ffcccc"},
+                    {"range": [20, 40], "color": "#ff9999"},
+                    {"range": [40, 60], "color": "#ff6666"},
+                    {"range": [60, 80], "color": "#ff3333"},
+                    {"range": [80, 100], "color": "#cc0000"},
+                ],
+            }
+        ))
 
+        fig_subs.update_layout(
+            margin=dict(l=10, r=10, t=80, b=10),
+            height=300,
+        )
+
+        st.plotly_chart(fig_subs, use_container_width=True, key="subs_watch_2")
+
+
+           
 
 
 
