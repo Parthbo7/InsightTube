@@ -72,33 +72,29 @@ st.divider()
 
 
 # -------------------- Info Section --------------------
+st.subheader("🚀 Core Features")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.info("📊 **Channel Analysis**\n\nAnalyze subscriber growth, views, and engagement.")
+
+    st.info("🔥 **Trending Videos**\n\nDiscover popular content across YouTube categories.")
+
+with col2:
+    st.info("⚔ **Channel Compare**\n\nCompare performance between two channels.")
+
+    st.info("📈 **Data Visualization**\n\nInteractive charts and analytics insights.")
+
+st.divider()
+st.subheader("⚙ How It Works")
+
 st.markdown("""
-### 🚀 What You Can Do
-
-Welcome to **InsightTube**, your smart YouTube analytics companion.
-
-Use this platform to:
-
-- 📊 Analyze detailed channel performance  
-- 📈 View engagement metrics & growth insights  
-- ⚔️ Compare two YouTube channels side-by-side  
-- 🎯 Make data-driven content decisions  
-
----
-
-### 💡 Why InsightTube?
-
-InsightTube helps creators and analysts:
-
-✔ Understand audience engagement  
-✔ Track performance trends  
-✔ Compare competitive channels  
-✔ Extract meaningful analytics instantly  
-
-
-**Use the sidebar to navigate through features.**
+1️⃣ Enter a YouTube channel name  
+2️⃣ Data is fetched using the YouTube Data API  
+3️⃣ Data is processed using Python and Pandas  
+4️⃣ Insights are visualized using interactive charts  
 """)
-
 st.divider()
 st.subheader("🔎 Find Your YouTube Channel")
 
@@ -132,3 +128,82 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+
+.footer-container {
+    background-color: #0b0f19;
+    padding: 40px 60px;
+    border-top: 1px solid #2a2a2a;
+    margin-top: 60px;
+}
+
+.footer-bottom {
+    border-top: 1px solid #2a2a2a;
+    margin-top: 30px;
+    padding-top: 15px;
+    text-align: center;
+    font-size: 14px;
+    color: #9aa0a6;
+}
+
+.footer-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.footer-link {
+    color: #58a6ff;
+    text-decoration: none;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="footer-container">
+
+<div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+
+<div>
+<div class="footer-title">📊 InsightTube</div>
+<p>Smart YouTube Analytics Platform</p>
+</div>
+
+<div>
+<div class="footer-title">🔗 Navigation</div>
+
+<p><a class="footer-link" href="/">🏠 Home</a></p>
+
+<p><a class="footer-link" href="/Channel_Analysis">📊 Channel Analysis</a></p>
+
+<p><a class="footer-link" href="/Channel_Compare">⚔ Channel Compare</a></p>
+
+<p><a class="footer-link" href="/Trending_Videos">🔥 Trending Videos</a></p>
+
+<p><a class="footer-link" href="/About_Us">🌍 About Us</a></p>
+
+</div>
+
+<div>
+<div class="footer-title">🌍 Connect</div>
+
+<p><a class="footer-link" href="https://linkedin.com">LinkedIn</a></p>
+<p><a class="footer-link" href="https://instagram.com">Instagram</a></p>
+<p><a class="footer-link" href="https://github.com">GitHub</a></p>
+
+</div>
+
+</div>
+
+<div class="footer-bottom">
+© 2026 InsightTube | Built with Streamlit | Internship Project | Pbo7
+</div>
+
+</div>
+""", unsafe_allow_html=True)
