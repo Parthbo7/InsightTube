@@ -71,7 +71,6 @@ st.divider()
 
 
 
-
 # -------------------- Info Section --------------------
 st.markdown("""
 ### 🚀 What You Can Do
@@ -99,6 +98,17 @@ InsightTube helps creators and analysts:
 
 **Use the sidebar to navigate through features.**
 """)
+
+st.divider()
+st.subheader("🔎 Find Your YouTube Channel")
+
+youtube_url = "https://www.youtube.com"
+
+st.link_button("Open YouTube", youtube_url)
+st.write(
+"Can't remember the exact name of your channel? "
+"Click the button below to go to YouTube and search for your channel."
+)
 
 st.divider()
 

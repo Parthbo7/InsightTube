@@ -48,26 +48,84 @@ with st.sidebar:
 
 st.set_page_config(page_title="About Us", page_icon="🚀")
 
-st.title("🚀 About InsightTube")
+st.header("🚀 About InsightTube")
 
-st.markdown("""
-## Who We Are  
-
-At **InsightTube**, we believe data should do more than just sit in a dashboard —  
-it should tell a story.
-
-We are building a powerful yet simple platform that helps creators, analysts, 
-and curious minds understand YouTube performance deeply.  
-
-From channel insights to video analytics and engagement metrics,  
-our goal is to transform raw data into meaningful decisions.
-""")
 st.divider()
 
-# 👤 Founder Section
-st.header("👤 Meet the Creator")
+st.subheader("📊 Project Overview")
+
 st.markdown("""
-### Parth Pandurang Bulbule  
+InsightTube is a data analytics platform that helps users explore YouTube performance insights.
+
+**Core Features**
+
+• Channel Analytics Dashboard  
+• Channel Comparison  
+• Trending Video Discovery  
+• Engagement & Performance Metrics  
+• Data Visualization using interactive charts
+""")
+st.divider()
+st.subheader("🎓 Internship Project")
+
+st.markdown("""
+This project was developed as part of the **Infosys Springboard Internship Program**.
+
+The goal of this project is to demonstrate practical implementation of:
+
+• Data analytics dashboards  
+• API integration  
+• Data visualization  
+• Real-world analytics applications
+""")
+st.divider()
+st.subheader("🛠 Technologies Used")
+
+st.markdown("""
+**Frontend**
+- Streamlit
+
+**Backend**
+- Python
+
+**Data Processing**
+- Pandas
+
+**Visualization**
+- Plotly
+
+**API**
+- YouTube Data API v3
+""")
+st.divider()
+st.subheader("⚙️ System Architecture")
+
+st.markdown("""
+User Input → Streamlit Interface → YouTube API  
+→ Data Processing (Pandas) → Visualization (Plotly) → Insights Dashboard
+""")
+st.divider()
+st.subheader("📈 Key Metrics")
+col1,col2,col3 = st.columns(3)
+
+col1.metric("Modules","4")
+col2.metric("Charts","10+")
+col3.metric("APIs Used","1")
+st.divider()
+st.subheader("🚀 Future Enhancements")
+
+st.markdown("""
+• AI based content strategy recommendations  
+• Channel growth prediction  
+• Revenue estimation tools  
+• Trending topic discovery  
+• Multi-channel analytics
+""")
+st.divider()
+# 👤 Founder Section
+st.subheader("👤 Meet the Creator")
+st.markdown("""
+### _Parth Pandurang Bulbule_  
 
 Engineering Student | Information Technology  
 @Mahatma Gandhi Mission's College of Engineering, Nanded
