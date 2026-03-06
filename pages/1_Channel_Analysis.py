@@ -63,6 +63,7 @@ with st.sidebar:
     st.page_link("Home.py", label="🏠 Home")
     st.page_link("pages/1_Channel_Analysis.py", label="📊 Channel Analysis")
     st.page_link("pages/2_Channel_Compare.py", label="⚔️ Channel Compare")
+    st.page_link("pages/4_Trending.py", label="🔥 Trending Videos")
     st.page_link("pages/3_About_Us.py", label="🌍 About Us")
 
 
@@ -712,8 +713,23 @@ def run_full_channel_analysis_and_display(channel_input):
         )
     
     st.divider()
-      
-  
+    st.markdown(
+        """
+        <button onclick="window.print()" 
+        style="
+            background-color:#cc0000;
+            color:white;
+            padding:10px 20px;
+            border:none;
+            border-radius:8px;
+            font-size:16px;
+            cursor:pointer;">
+            📄 Download Dashboard as PDF
+        </button>
+        """,
+        unsafe_allow_html=True
+    )
+    
 
 
 if st.button("Analyze Channel"):

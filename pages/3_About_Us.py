@@ -42,6 +42,7 @@ with st.sidebar:
     st.page_link("Home.py", label="🏠 Home")
     st.page_link("pages/1_Channel_Analysis.py", label="📊 Channel Analysis")
     st.page_link("pages/2_Channel_Compare.py", label="⚔️ Channel Compare")
+    st.page_link("pages/4_Trending.py", label="🔥 Trending Videos")
     st.page_link("pages/3_About_Us.py", label="🌍 About Us")
 
 
