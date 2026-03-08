@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase import create_client
 st.set_page_config(layout="wide")
-st.title("👨‍💻 About Us")
+st.title("🌐 About Us")
 st.divider()
 st.set_page_config(
     page_title="InsightTube",

@@ -1,8 +1,11 @@
+from pyparsing import col
 import streamlit as st
 
 st.set_page_config(page_title="InsightTube", layout="wide")
-
-st.title("📊 InsightTube")
+st.divider()
+col1,col2 = st.columns([1,10])
+col1.image("https://cdn-icons-png.flaticon.com/512/1384/1384060.png", width=80)
+col2.title(" InsightTube")
 st.markdown("### Smart YouTube Analytics Platform")
 st.divider()
 
@@ -61,18 +64,19 @@ with col2:
         st.switch_page("pages/2_Channel_Compare.py")
 
 with col3:
+    if st.button("🔥 Trending Videos", use_container_width=True):
+        st.switch_page("pages/4_Trending.py")
+
+with col4:
     if st.button("🌍 About Us", use_container_width=True):
         st.switch_page("pages/3_About_Us.py")
 
-with col4:
-    if st.button("🔥 Trending Videos", use_container_width=True):
-        st.switch_page("pages/4_Trending.py")
-st.divider()
-
-
 
 # -------------------- Info Section --------------------
-st.subheader("🚀 Core Features")
+st.divider()
+col1, col2 = st.columns([1,15])
+col1.image("https://cdn-icons-png.flaticon.com/128/2140/2140212.png", width=50)
+col2.subheader(" Core Features")
 
 col1, col2 = st.columns(2)
 
@@ -87,7 +91,9 @@ with col2:
     st.info("📈 **Data Visualization**\n\nInteractive charts and analytics insights.")
 
 st.divider()
-st.subheader("⚙ How It Works")
+col1,col2 = st.columns([1,15])
+col1.image("https://cdn-icons-gif.flaticon.com/17122/17122416.gif", width=50)
+col2.subheader(" How It Works")
 
 st.markdown("""
 1️⃣ Enter a YouTube channel name  
@@ -96,7 +102,9 @@ st.markdown("""
 4️⃣ Insights are visualized using interactive charts  
 """)
 st.divider()
-st.subheader("🔎 Find Your YouTube Channel")
+col1,col2 = st.columns([1,15])
+col1.image("https://cdn-icons-gif.flaticon.com/16678/16678143.gif", width=50)
+col2.subheader(" Find Your YouTube Channel")
 
 youtube_url = "https://www.youtube.com"
 
