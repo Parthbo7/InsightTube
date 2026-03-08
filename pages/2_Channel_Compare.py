@@ -63,7 +63,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.divider()
-st.title("⚔️ Channel Comparison")
+col1,col2 = st.columns([1,10])
+col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=80)
+col2.title("Channel Comparison")
 st.divider()
 
 col1, col2 = st.columns(2,gap="large")
