@@ -192,7 +192,6 @@ def get_trending_videos(category_id=None):
 # -------------------------
 # RUN ANALYSIS
 # -------------------------
-
 if st.button("Analyze Trends"):
 
     df = get_trending_videos(category_id)
@@ -203,38 +202,44 @@ if st.button("Analyze Trends"):
 
     st.subheader("📺 Top Trending Videos")
     st.divider()
-    for i, row in df.iterrows():
 
-        channel_icon = get_channel_icon(row["channel_id"])
+    cols_per_row = 3   # number of cards per row
 
-        col1, col2, col3 = st.columns([1,3,1])
+    for i in range(0, len(df), cols_per_row):
 
-        with col1:
-            st.image(row["thumbnail"])
+        cols = st.columns(cols_per_row)
 
-        with col2:
-            st.markdown(f"**{row['title']}**")
-            
-            icon_col, name_col = st.columns([1,4])
+        for col, (_, row) in zip(cols, df.iloc[i:i+cols_per_row].iterrows()):
 
-            with icon_col:
-                st.image(channel_icon, width=40)
+            with col:
 
-            with name_col:
-                st.write(row["channel"])
+                channel_icon = get_channel_icon(row["channel_id"])
 
-            st.write("Views:", f"{row['views']:,}")
-            st.write("Likes:", f"{row['likes']:,}")
-            st.write("Comments:", f"{row['comments']:,}")
-            video_url = f"https://www.youtube.com/watch?v={row['video_id']}"
-            st.link_button("▶ Watch on YouTube", video_url)
-            st.divider()
+                st.image(row["thumbnail"], use_container_width=True)
+
+                st.markdown(f"**{row['title']}**")
+
+                icon_col, name_col = st.columns([1,4])
+
+                with icon_col:
+                    st.image(channel_icon, width=30)
+
+                with name_col:
+                    st.write(row["channel"])
+
+                st.caption(f"👁 {row['views']:,} views")
+                st.caption(f"👍 {row['likes']:,} likes")
+                st.caption(f"💬 {row['comments']:,} comments")
+
+                video_url = f"https://www.youtube.com/watch?v={row['video_id']}"
+                st.link_button("▶ Watch", video_url, use_container_width=True)
     # -------------------------
     # TOP CHANNELS
     # -------------------------
     
     st.title("🏆 Top Channels")
     st.divider()
+
     top_channels = df.groupby(["channel","channel_id"]).agg({
         "views":"sum",
         "title":"count"
@@ -247,43 +252,40 @@ if st.button("Analyze Trends"):
     top_channels = top_channels.sort_values(
         by="views",
         ascending=False
-    ).head(10)
+    ).head(12).reset_index(drop=True)
 
 
     # fetch icons
     channel_ids = top_channels["channel_id"].tolist()
     icons = get_channel_icons(channel_ids)
 
-    top_channels = top_channels.sort_values(
-    by="views",
-    ascending=False
-    ).head(10).reset_index(drop=True)
-    # leaderboard
-    for rank, row in top_channels.iterrows():
 
-        rank += 1
+    cols_per_row = 3
 
-        col1,col2,col3 = st.columns([1,5,2])
+    for i in range(0, len(top_channels), cols_per_row):
 
-        with col1:
-            icon = icons.get(row["channel"], None)
-            if icon:
-                st.image(icon, width=45)
+        cols = st.columns(cols_per_row)
 
-        with col2:
-            st.markdown(f"### #{rank} {row['channel']}")
-            st.write(f"Trending Videos: {row['trending_videos']}")
+        for col, (_, row) in zip(cols, top_channels.iloc[i:i+cols_per_row].iterrows()):
 
-            channel_url = f"https://youtube.com/channel/{row['channel_id']}"
-            st.link_button("Visit Channel", channel_url)
+            with col:
 
-        with col3:
-            st.metric(
-                "Views",
-                f"{row['views']:,}"
-            )
+                rank = top_channels.index.get_loc(row.name) + 1
 
-        st.divider()
+                icon = icons.get(row["channel"], None)
+
+                if icon:
+                    st.image(icon, width=70)
+
+                st.markdown(f"### #{rank} {row['channel']}")
+
+                st.caption(f"🔥 {row['trending_videos']} Trending Videos")
+                st.caption(f"👁 {row['views']:,} Views")
+
+                channel_url = f"https://youtube.com/channel/{row['channel_id']}"
+                st.link_button("Visit Channel", channel_url, use_container_width=True)
+
+                st.divider()
             
 
     # -------------------------
