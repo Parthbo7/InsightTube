@@ -21,16 +21,31 @@ hide_default_sidebar = """
 st.markdown(hide_default_sidebar, unsafe_allow_html=True)
 
 
+
 with st.sidebar:
-    st.markdown("## 📊 InsightTube")
+    st.markdown("""
+    <div style="display:flex; align-items:center; gap:10px;">
+        <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" width="40">
+        <h3 style="margin:0;">InsightTube</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.divider()
-
-    st.page_link("Home.py", label="🏠 Home")
-    st.page_link("pages/1_Channel_Analysis.py", label="📊 Channel Analysis")
-    st.page_link("pages/2_Channel_Compare.py", label="⚔️ Channel Compare")
-    st.page_link("pages/4_Trending.py", label="🔥 Trending Videos")
-    st.page_link("pages/3_About_Us.py", label="🌍 About Us")
-
+    col1, col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/10307/10307931.png", width=40)
+    col2.page_link("Home.py", label="Home")
+    col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
+    col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
+    col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
+    col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
+    col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/9227/9227001.png", width=40)
+    col2.page_link("pages/4_Trending.py", label="Trending Videos")
+    col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
+    col2.page_link("pages/3_About_Us.py", label=" About Us")
 st.markdown("""
 <style>
 .block-container {
