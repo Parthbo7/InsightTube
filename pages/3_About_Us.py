@@ -124,6 +124,7 @@ st.markdown("""
 - Python
             
 **Database**
+- SQL
 - Supabase
 - Postgres
             
@@ -141,7 +142,7 @@ st.divider()
 
 st.markdown("""
         <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/19037/19037117.png" width="35">
+            <img src="https://cdn-icons-png.flaticon.com/128/19037/19037117.png" width="45">
             <h3 style="margin:0;">System Architecture</h3>
         </div>
         """, unsafe_allow_html=True)
@@ -168,7 +169,7 @@ col3.metric("APIs Used","1")
 st.divider()
 st.markdown("""
         <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/13163/13163215.png" width="35">
+            <img src="https://cdn-icons-png.flaticon.com/128/13163/13163215.png" width="45">
             <h4 style="margin:0;">Future Enhancements</h4>
         </div>
         """, unsafe_allow_html=True)

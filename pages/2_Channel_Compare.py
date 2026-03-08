@@ -448,7 +448,8 @@ if "info1" in st.session_state and "info2" in st.session_state:
         )
 
         st.plotly_chart(fig_freq, use_container_width=True, key="upload_freq_2")
-           
+    st.divider()    
+    st.title("More features are Under Development! 🚧 Stay Tuned....................! ")       
 
 
 

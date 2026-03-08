@@ -460,8 +460,12 @@ def run_full_channel_analysis_and_display(channel_input):
     # 🔥 Upload Frequency Analysis
     # ---------------------------------------------------
     st.divider()
-    st.subheader("🔥 Upload Frequency Analysis")
-
+    st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/12822/12822821.png" width="35">
+            <h4 style="margin:0;">Upload Frequency Analysis</h4>
+        </div>
+        """, unsafe_allow_html=True)
     try:
         total_videos = int(channel_info["video_count"])
         published_date = datetime.strptime(channel_info["published_at"][:10], "%Y-%m-%d").date()
@@ -534,7 +538,7 @@ def run_full_channel_analysis_and_display(channel_input):
         return round(revenue, 2)
 
     # USD → INR
-    USD_TO_INR = 83
+    USD_TO_INR = 90
 
     cpm_low_usd = 3
     cpm_high_usd = 10
@@ -560,8 +564,13 @@ def run_full_channel_analysis_and_display(channel_input):
         )
 
         st.divider()
-        st.subheader("💰 Revenue Estimation Dashboard (INR)")
-
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/10384/10384161.png" width="45">
+            <h4 style="margin:0;"> Revenue Estimation Dashboard (INR)</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col1, col2, col3 = st.columns(3)
 
         col1.metric("Estimated Revenue (Low)", f"₹ {low_estimate:,.2f}")
@@ -573,8 +582,13 @@ def run_full_channel_analysis_and_display(channel_input):
 
         st.divider()
 
-    st.subheader("📊 Estimated Revenue per Video (INR)")
-
+    st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/13502/13502705.png" width="45">
+            <h4 style="margin:0;">Estimated Revenue per Video (INR)</h4>
+        </div>
+        """, unsafe_allow_html=True)
+    
     # Sort by revenue
     revenue_df = df.sort_values(by="estimated_revenue", ascending=False)
 
@@ -596,8 +610,13 @@ def run_full_channel_analysis_and_display(channel_input):
     #Best Performing Video Analysis
     #---------------------------------------------------
     st.divider()  
-    st.title("🏆 Best Performing Recent Video Analyzer")
-
+    st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/4302/4302106.png" width="45">
+            <h4 style="margin:0;">Best Performing Recent Video Analyzer</h4>
+        </div>
+        """, unsafe_allow_html=True)
+   
     df = pd.DataFrame(video_analytics)
 
     if df.empty:
@@ -638,8 +657,12 @@ def run_full_channel_analysis_and_display(channel_input):
     # 💡 AI-Based Channel Insights
     # ---------------------------------------------------
     st.divider()
-    st.subheader("💡 Channel Insights & Strategy Suggestions")
-
+    st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/16835/16835765.png" width="45">
+            <h4 style="margin:0;">Channel Insights & Strategy Suggestions</h4>
+        </div>
+        """, unsafe_allow_html=True)
     insights = []
 
     avg_views = df["view_count"].mean()
