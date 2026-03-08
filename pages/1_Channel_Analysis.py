@@ -37,8 +37,11 @@ duration_counts = pd.DataFrame()
 supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(supabase_url, supabase_key)
+st.divider()
 
-st.title("📊 Channel Analysis ")
+col1, col2 = st.columns([1, 10])
+col1.image("https://cdn-icons-png.flaticon.com/128/7172/7172401.png", width=80)
+col2.title("Channel Analysis ")
 st.divider()
 
 channel_input = st.text_input("Enter YouTube Channel Name ")
@@ -192,19 +195,24 @@ def run_full_channel_analysis_and_display(channel_input):
     col3.metric("Total Videos", channel_info["video_count"])
 
     st.divider()
-    st.subheader("📋 Channel Description")
+    col1, col2 = st.columns([1,15])
+    col1.image("https://cdn-icons-png.flaticon.com/128/7739/7739187.png", width=50)
+    col2.subheader(" Channel Description")
     st.markdown(f"**Description:** {channel_info['description']}")
     st.divider()
-    st.subheader("📅 Channel Published Date")
+    col1, col2 = st.columns([1, 15])
+    col1.image("https://cdn-icons-png.flaticon.com/128/10691/10691802.png", width=50)
+    col2.subheader("Channel Published Date")
     st.markdown(f"**Published At:** {channel_info['published_at']}")
     st.divider()
 
  #Bar chart and table for video analytics views vs title  
 
     if video_analytics:
-        df = pd.DataFrame(video_analytics)  
-
-    st.subheader("📊 Views per Video")
+        df = pd.DataFrame(video_analytics) 
+    col1, col2 = st.columns([1, 15]) 
+    col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=50)
+    col2.subheader("Views per Video")
 
     chart_df = df.sort_values(by="view_count", ascending=False)
 
@@ -217,8 +225,9 @@ def run_full_channel_analysis_and_display(channel_input):
     )
     st.divider()
 
-    
-    st.subheader("📊 Likes and Comments per Video")
+    col1,col2 = st.columns([1,15])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2285/2285636.png", width=50)
+    col2.subheader(" Likes and Comments per Video")
     chart_df = pd.DataFrame({
     "Video Index": range(1, len(df) + 1),
     "Likes": df["like_count"],
@@ -270,7 +279,13 @@ def run_full_channel_analysis_and_display(channel_input):
     left_col, right_col = st.columns([1, 1], gap="large")
 
     with left_col:
-        st.subheader("📈 Average Engagement per 1000 Views")
+
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/2257/2257295.png" width="35">
+            <h4 style="margin:0;">Average Engagement per 1000 Views</h4>
+        </div>
+        """, unsafe_allow_html=True)
         fig = go.Figure(go.Indicator(
             mode="gauge+number",
             value=average_engagement,
@@ -309,8 +324,12 @@ def run_full_channel_analysis_and_display(channel_input):
         except (ValueError, TypeError):
             subscriber_watch_percent = 0
           
-
-        st.subheader("👥 Subscriber Watch Percentage")  
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/3369/3369157.png" width="35">
+            <h4 style="margin:0;">Subscriber Watch Percentage</h4>
+        </div>
+        """, unsafe_allow_html=True)
         fig_subs = go.Figure(go.Indicator(
             mode="gauge+number",
             value=subscriber_watch_percent,
@@ -363,8 +382,12 @@ def run_full_channel_analysis_and_display(channel_input):
     #-----------------------------------    
     left_col, right_col = st.columns([1, 1], gap="large")
     with left_col:
-        
-        st.subheader("🎥 Video Duration Distribution")
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/12670/12670512.png" width="35">
+            <h4 style="margin:0;">Video Duration Distribution</h4>
+        </div>
+        """, unsafe_allow_html=True)
 
         red_palette = [
             "#ffcccc",   # light red
@@ -412,7 +435,14 @@ def run_full_channel_analysis_and_display(channel_input):
             lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0
         )
 
-        st.subheader("⏱ Video Duration by Upload Order")
+        
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/670/670816.png" width="35">
+            <h4 style="margin:0;">Video Duration by Upload Order</h4>
+        </div>
+        """, unsafe_allow_html=True)
+
 
         duration_chart = alt.Chart(df).mark_bar(
         color="#cc0000"   # Strong red
