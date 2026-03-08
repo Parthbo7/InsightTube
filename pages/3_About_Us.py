@@ -1,7 +1,10 @@
 import streamlit as st
 from supabase import create_client
 st.set_page_config(layout="wide")
-st.title("🌐 About Us")
+st.divider()
+col1,col2 = st.columns([1,10])
+col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=80)
+col2.title("About Us")
 st.divider()
 st.set_page_config(
     page_title="InsightTube",
@@ -63,11 +66,16 @@ with st.sidebar:
 
 st.set_page_config(page_title="About Us", page_icon="🚀")
 
-st.header("🚀 About InsightTube")
-
+st.write("InsightTube is a smart YouTube analytics platform that allows users to analyze and explore detailed insights about any YouTube channel. It helps users understand channel performance, trending videos, engagement metrics, and growth patterns through an easy-to-use dashboard. The platform provides valuable data that helps creators and viewers better understand content performance and audience behavior.")
 st.divider()
 
-st.subheader("📊 Project Overview")
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/10050/10050724.png" width="45">
+            <h3 style="margin:0;">Project Overview</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 st.markdown("""
 InsightTube is a data analytics platform that helps users explore YouTube performance insights.
@@ -81,7 +89,12 @@ InsightTube is a data analytics platform that helps users explore YouTube perfor
 • Data Visualization using interactive charts
 """)
 st.divider()
-st.subheader("🎓 Internship Project")
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/17772/17772829.png" width="45">
+            <h3 style="margin:0;">Internship Project</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("""
 This project was developed as part of the **Infosys Springboard Internship Program**.
@@ -94,17 +107,29 @@ The goal of this project is to demonstrate practical implementation of:
 • Real-world analytics applications
 """)
 st.divider()
-st.subheader("🛠 Technologies Used")
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/4413/4413567.png" width="45">
+            <h3 style="margin:0;">Technologies Used</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 st.markdown("""
 **Frontend**
 - Streamlit
+- HTML/CSS for custom styling
 
 **Backend**
 - Python
-
+            
+**Database**
+- Supabase
+- Postgres
+            
 **Data Processing**
 - Pandas
+- NumPy
 
 **Visualization**
 - Plotly
@@ -113,21 +138,40 @@ st.markdown("""
 - YouTube Data API v3
 """)
 st.divider()
-st.subheader("⚙️ System Architecture")
+
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/19037/19037117.png" width="35">
+            <h3 style="margin:0;">System Architecture</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 st.markdown("""
 User Input → Streamlit Interface → YouTube API  
 → Data Processing (Pandas) → Visualization (Plotly) → Insights Dashboard
 """)
 st.divider()
-st.subheader("📈 Key Metrics")
+
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/17047/17047745.png" width="45">
+            <h3 style="margin:0;">Key Metrics</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
 col1,col2,col3 = st.columns(3)
 
 col1.metric("Modules","4")
 col2.metric("Charts","10+")
 col3.metric("APIs Used","1")
 st.divider()
-st.subheader("🚀 Future Enhancements")
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/13163/13163215.png" width="35">
+            <h4 style="margin:0;">Future Enhancements</h4>
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("""
 • AI based content strategy recommendations  
@@ -138,7 +182,13 @@ st.markdown("""
 """)
 st.divider()
 # 👤 Founder Section
-st.subheader("👤 Meet the Creator")
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/6110/6110185.png" width="45">
+            <h3 style="margin:0;">Meet the Creator</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
 st.markdown("""
 ### _Parth Pandurang Bulbule_  
 
@@ -158,7 +208,13 @@ data and artificial intelligence for smarter decision-making.
 """)
 
 st.markdown("---")
-st.markdown("### 🌐 Connect With Me")
+
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/1017/1017466.png" width="45">
+            <h3 style="margin:0;">Connect With Me</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("""
 <div style="display: flex; gap: 25px; margin-top: 10px;">
@@ -214,7 +270,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-st.title("💡 Ideas & Feedback")
+st.markdown("""
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="https://cdn-icons-png.flaticon.com/128/7119/7119415.png" width="45">
+            <h3 style="margin:0;"> Ideas & Feedback</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
 name = st.text_input("Name")
 email = st.text_input("Email")
 message = st.text_area("Your Idea / Feedback")

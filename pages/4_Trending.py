@@ -106,9 +106,13 @@ categories = {
     "Science & Technology": "28",
     
 }
-
-st.title("🔥 Trending YouTube Insights")
 st.divider()
+col1,col2 = st.columns([1,10])
+col1.image("https://cdn-icons-png.flaticon.com/128/9227/9227001.png", width=80)
+col2.title("Trending Videos")
+st.divider()
+
+
 # -------------------------
 # CATEGORY SELECT
 # -------------------------
