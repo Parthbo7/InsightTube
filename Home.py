@@ -68,24 +68,44 @@ st.markdown("""
 
 
 # -------------------- Action Buttons --------------------
-col1, col2, col3,col4 = st.columns(4)
+# Row 1
+col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("📊 Channel Analysis", use_container_width=True):
-        st.switch_page("pages/1_Channel_Analysis.py")
+    icon, btn = st.columns([1,10])
+    with icon:
+        st.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=35)
+    with btn:
+        if st.button("Channel Analysis", use_container_width=True):
+            st.switch_page("pages/1_Channel_Analysis.py")
 
 with col2:
-    if st.button("⚔️ Compare Channels", use_container_width=True):
-        st.switch_page("pages/2_Channel_Compare.py")
+    icon, btn = st.columns([1,10])
+    with icon:
+        st.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=35)
+    with btn:
+        if st.button("Compare Channels", use_container_width=True):
+            st.switch_page("pages/2_Channel_Compare.py")
+
+
+# Row 2
+col3, col4 = st.columns(2)
 
 with col3:
-    if st.button("🔥 Trending Videos", use_container_width=True):
-        st.switch_page("pages/4_Trending.py")
+    icon, btn = st.columns([1,10])
+    with icon:
+        st.image("https://cdn-icons-png.flaticon.com/128/9227/9227001.png", width=35)
+    with btn:
+        if st.button("Trending Videos", use_container_width=True):
+            st.switch_page("pages/4_Trending.py")
 
 with col4:
-    if st.button("🌍 About Us", use_container_width=True):
-        st.switch_page("pages/3_About_Us.py")
-
+    icon, btn = st.columns([1,10])
+    with icon:
+        st.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=35)
+    with btn:
+        if st.button("About Us", use_container_width=True):
+            st.switch_page("pages/3_About_Us.py")
 
 # -------------------- Info Section --------------------
 st.divider()

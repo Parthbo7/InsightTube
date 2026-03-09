@@ -12,7 +12,8 @@ import plotly.graph_objects as go
 from datetime import datetime
 import matplotlib.pyplot as plt 
 from supabase import create_client
-
+from sklearn.linear_model import LinearRegression
+import numpy as np
 st.set_page_config(layout="wide")
 st.markdown("""
 <style>
@@ -166,6 +167,33 @@ def parse_iso_duration(duration):
 
     return hours * 3600 + minutes * 60 + seconds
 
+def predict_subscriber_growth(df, current_subscribers):
+
+    if df.empty:
+        return current_subscribers, 0
+
+    df = df.sort_values("published_at").reset_index(drop=True)
+    df["time_index"] = df.index
+
+    # realistic conversion
+    conversion_rate = 0.005   # 0.5%
+
+    df["estimated_sub_growth"] = df["view_count"] * conversion_rate
+
+    X = df["time_index"].values.reshape(-1,1)
+    y = df["estimated_sub_growth"].values
+
+    model = LinearRegression()
+    model.fit(X,y)
+
+    future_index = np.array([[df["time_index"].max()+5]])
+
+    predicted_growth = model.predict(future_index)[0]
+
+    predicted_subscribers = current_subscribers + predicted_growth
+    growth_rate = (predicted_growth/current_subscribers)*100
+
+    return int(predicted_subscribers), growth_rate
 
 # Display on the UI 
 
@@ -653,6 +681,44 @@ def run_full_channel_analysis_and_display(channel_input):
         st.metric("Views / Subscriber Ratio", f"{best_video['view_subscriber_ratio']:.2f}")
         st.metric("Performance Score", f"{best_video['performance_score']:.2f}")
 
+
+
+       
+    # ---------------------------------------------------
+    # 📈 Channel Growth Prediction (30 Days)
+    # ---------------------------------------------------
+
+    st.divider()
+
+    st.markdown("""
+    <div style="display:flex; align-items:center; gap:10px;">
+    <img src="https://cdn-icons-png.flaticon.com/128/2920/2920349.png" width="40">
+    <h4 style="margin:0;">Subscriber Growth Prediction (Next 30 Days)</h4>
+    </div>
+    """, unsafe_allow_html=True)
+
+    current_subs = int(channel_info["subscriber_count"])
+
+    predicted_subs, growth_rate = predict_subscriber_growth(df, current_subs)
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Current Subscribers", f"{current_subs:,}")
+    col2.metric("Predicted (30 Days)", f"{predicted_subs:,}")
+    col3.metric("Growth Rate", f"{growth_rate:.2f}%")
+    future = [current_subs, predicted_subs]
+
+    growth_chart = alt.Chart(
+        pd.DataFrame({
+            "Stage":["Current","Predicted (30 Days)"],
+            "Subscribers":future
+        })
+    ).mark_bar(color="#cc0000").encode(
+        x="Stage",
+        y="Subscribers"
+    )
+
+    st.altair_chart(growth_chart, use_container_width=True)
     # ---------------------------------------------------
     # 💡 AI-Based Channel Insights
     # ---------------------------------------------------
@@ -669,8 +735,7 @@ def run_full_channel_analysis_and_display(channel_input):
     avg_likes = df["like_count"].mean()
     avg_comments = df["comment_count"].mean()
     avg_engagement = df["total_engagement_rate"].mean()
-
-    # 1️⃣ Engagement Insight
+        # 1️⃣ Engagement Insight
     if avg_engagement > 8:
         insights.append("🔥 Excellent engagement rate. Audience is highly interactive.")
     elif avg_engagement > 4:
@@ -704,19 +769,22 @@ def run_full_channel_analysis_and_display(channel_input):
     else:
         insights.append("🎥 Long-form content dominant. Great for deep audience retention.")
 
+    if growth_rate > 4:
+        st.success("🚀 Channel is experiencing strong growth momentum.")
+    elif growth_rate > 1:
+        st.info("📈 Channel is showing steady growth.")
+    else:
+        st.warning("⚠️ Growth is currently slow.")
+
     # 5️⃣ Top Video Performance Gap
     top_views = df["view_count"].max()
 
     if top_views > avg_views * 1.8:
         insights.append("🚀 One video significantly outperformed others. Analyze and replicate its format.")
-
+     
     # Display Insights
     for insight in insights:
-        st.success(insight)        
-    
-
-
-
+        st.success(insight) 
 
     st.divider()
     st.subheader("📊 Recent Video Analytics")
