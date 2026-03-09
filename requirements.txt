@@ -7,3 +7,5 @@ plotly
 matplotlib
 altair
 python-dotenv
+scikit-learn
+numpy
