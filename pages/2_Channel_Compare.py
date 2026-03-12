@@ -430,14 +430,14 @@ if "info1" in st.session_state and "info2" in st.session_state:
             value=upload_frequency,
             title={"text": "Uploads per Month"},
             gauge={
-                "axis": {"range": [0, 20]},
+                "axis": {"range": [0, 30]},
                 "bar": {"color": "red"},
                 "steps": [
-                        {"range": [0, 1], "color": "#ffcccc"},
-                        {"range": [1, 4], "color": "#ff9999"},
-                        {"range": [4, 8], "color": "#ff6666"},
-                        {"range": [8, 12], "color": "#ff3333"},
-                        {"range": [12, 20], "color": "#cc0000"},
+                        {"range": [0, 6], "color": "#ffcccc"},
+                        {"range": [6, 12], "color": "#ff9999"},
+                        {"range": [12, 18], "color": "#ff6666"},
+                        {"range": [18, 24], "color": "#ff3333"},
+                        {"range": [24, 30], "color": "#cc0000"},
                 ],
             }
         ))

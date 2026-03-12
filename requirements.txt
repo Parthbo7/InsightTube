@@ -9,3 +9,4 @@ altair
 python-dotenv
 scikit-learn
 numpy
+reportlab
