@@ -1,474 +1,959 @@
+import re
 import altair as alt
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from supabase_auth import datetime
+import numpy as np
+from datetime import datetime
 from services import run_full_channel_analysis
-
-
+ 
+# ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="InsightTube",
+    page_title="InsightTube – Channel Compare",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-hide_default_sidebar = """
-    <style>
-        [data-testid="stSidebarNav"] {display: none;}
-    </style>
-"""
-st.markdown(hide_default_sidebar, unsafe_allow_html=True)
-
-
-
+ 
+# ── Global Styles (mirrors Channel Analysis theme) ────────────────────────────
+st.markdown("""
+<style>
+/* ── base ── */
+.block-container { padding-top: 2rem; }
+[data-testid="stSidebar"] { background-color: #111827; }
+.stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; }
+ 
+/* ── section header cards ── */
+.section-header {
+    display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-left: 4px solid #CC0000;
+    padding: 10px 16px; border-radius: 8px;
+    margin: 16px 0 8px 0;
+}
+.section-header h4 { margin: 0; color: #f9fafb; font-size: 1rem; }
+ 
+/* ── channel card ── */
+.channel-card {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border: 1px solid #374151;
+    border-top: 3px solid #CC0000;
+    border-radius: 12px;
+    padding: 20px; margin-bottom: 8px;
+}
+.channel-name { font-size: 1.3rem; font-weight: 700; color: #f9fafb; margin: 0; }
+.channel-sub  { font-size: 0.82rem; color: #9ca3af; margin-top: 2px; }
+ 
+/* ── stat pill ── */
+.stat-pill {
+    display: inline-block;
+    background: #0E1117; border: 1px solid #374151;
+    border-radius: 20px; padding: 4px 14px;
+    font-size: 0.8rem; color: #d1d5db; margin: 3px 3px 0 0;
+}
+ 
+/* ── vs badge ── */
+.vs-badge {
+    text-align: center; font-size: 2.8rem; font-weight: 900;
+    color: #CC0000; letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(204,0,0,0.5);
+    padding: 24px 0;
+}
+ 
+/* ── winner banner ── */
+.winner-banner {
+    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 40%, #7f1d1d 100%);
+    border: 2px solid #EF4444;
+    border-radius: 16px; padding: 36px 24px; text-align: center;
+    margin: 24px 0; position: relative; overflow: hidden;
+}
+.winner-banner::before {
+    content: "🏆"; position: absolute; font-size: 8rem;
+    opacity: 0.07; top: -10px; right: 20px;
+}
+.winner-crown  { font-size: 3.5rem; display: block; margin-bottom: 6px; }
+.winner-label  { font-size: 0.95rem; color: #fca5a5; letter-spacing: 3px;
+                 text-transform: uppercase; margin-bottom: 6px; }
+.winner-name   { font-size: 2.2rem; font-weight: 900; color: #ffffff;
+                 margin: 0 0 10px 0; }
+.winner-reason { font-size: 0.9rem; color: #fcd34d; margin-top: 6px; }
+ 
+/* ── score card ── */
+.score-card {
+    background: #1f2937; border: 1px solid #374151;
+    border-radius: 10px; padding: 14px 18px; text-align: center;
+    margin: 6px 0;
+}
+.score-label { font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px; }
+.score-value { font-size: 1.4rem; font-weight: 700; color: #f87171; }
+.score-winner { color: #4ade80 !important; }
+ 
+/* ── comparison bar ── */
+.cmp-bar-wrap  { margin: 8px 0; }
+.cmp-bar-label { font-size: 0.78rem; color: #9ca3af; margin-bottom: 3px; }
+.cmp-bar-outer { background:#374151; border-radius:6px; height:12px; overflow:hidden; }
+.cmp-bar-inner { height:12px; border-radius:6px;
+                 background: linear-gradient(90deg,#FF6666,#CC0000); }
+ 
+/* ── tie badge ── */
+.tie-badge {
+    background: linear-gradient(135deg,#1d4ed8,#1e40af);
+    border: 2px solid #3b82f6; border-radius: 16px;
+    padding: 28px 24px; text-align: center; margin: 24px 0;
+}
+.tie-label { font-size: 1.8rem; font-weight: 900; color: #93c5fd; }
+ 
+/* ── insight pill ── */
+.insight-win  { background:#052e16; border:1px solid #16a34a; border-radius:8px;
+                padding:10px 14px; margin:5px 0; color:#86efac; font-size:0.85rem; }
+.insight-lose { background:#1c1917; border:1px solid #57534e; border-radius:8px;
+                padding:10px 14px; margin:5px 0; color:#a8a29e; font-size:0.85rem; }
+ 
+/* ── footer ── */
+.footer {
+    position: fixed; left: 0; bottom: 0; width: 100%;
+    background-color: #0E1117; color: white;
+    text-align: right; padding: 10px; font-size: 14px; z-index: 999;
+}
+</style>
+""", unsafe_allow_html=True)
+ 
+# ── Hide default sidebar nav ──────────────────────────────────────────────────
+st.markdown("""
+    <style>[data-testid="stSidebarNav"] {display: none;}</style>
+""", unsafe_allow_html=True)
+ 
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="display:flex; align-items:center; gap:10px;">
         <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" width="40">
-        <h3 style="margin:0;">InsightTube</h3>
+        <h3 style="margin:0; color:white;">InsightTube</h3>
     </div>
     """, unsafe_allow_html=True)
-
     st.divider()
     col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/10307/10307931.png", width=40)
     col2.page_link("Home.py", label="Home")
-    col1,col2 = st.columns([1, 8])
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
     col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
-    col1,col2 = st.columns([1, 8])
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
     col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
-    col1,col2 = st.columns([1, 8])
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9227/9227001.png", width=40)
     col2.page_link("pages/4_Trending.py", label="Trending Videos")
-    col1,col2 = st.columns([1, 8])
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
-    col2.page_link("pages/3_About_Us.py", label=" About Us")
-st.markdown("""
-<style>
-.block-container {
-    padding-top: 2rem;
-}
-[data-testid="stSidebar"] {
-    background-color: #111827;
-}
-.stMetric {
-    background-color: #1f2937;
-    padding: 15px;
-    border-radius: 10px;
-}
-</style>
-""", unsafe_allow_html=True)
-
+    col2.page_link("pages/3_About_Us.py", label="About Us")
+ 
+# ── Page Header ───────────────────────────────────────────────────────────────
 st.divider()
-col1,col2 = st.columns([1,10])
-col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=80)
-col2.title("Channel Comparison")
+hc1, hc2 = st.columns([1, 10])
+hc1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=80)
+hc2.title("Channel Comparison")
 st.divider()
+ 
+ 
+# ═════════════════════════════════════════════════════════════════════════════
+#  HELPER FUNCTIONS
+# ═════════════════════════════════════════════════════════════════════════════
+ 
+def parse_iso_duration(duration):
+    pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?'
+    match = re.match(pattern, str(duration))
+    if not match:
+        return 0
+    h  = int(match.group(1)) if match.group(1) else 0
+    mn = int(match.group(2)) if match.group(2) else 0
+    s  = int(match.group(3)) if match.group(3) else 0
+    return h * 3600 + mn * 60 + s
+ 
+ 
+def classify_creator(freq):
+    if freq < 1:   return "😴 Inactive"
+    elif freq < 4: return "🎥 Casual"
+    elif freq < 8: return "📈 Consistent"
+    else:          return "🔥 Highly Active"
+ 
+ 
+def compute_channel_stats(info, data):
+    """Return a dict of derived metrics used throughout the page."""
+    df = pd.DataFrame(data) if data else pd.DataFrame()
+    stats = {}
+ 
+    # Basic counts
+    stats["subscriber_count"] = int(info.get("subscriber_count", 0))
+    stats["view_count"]       = int(info.get("view_count", 0))
+    stats["video_count"]      = int(info.get("video_count", 0))
+ 
+    # Always initialise every derived key with a safe default first
+    defaults = {
+        "avg_views":      0.0,
+        "avg_likes":      0.0,
+        "avg_comments":   0.0,
+        "avg_engagement": 0.0,
+        "avg_eng_1000":   0.0,
+        "avg_vsr":        0.0,
+    }
+    stats.update(defaults)
+ 
+    if not df.empty:
+        def _col_mean(col):
+            if col in df.columns:
+                try:
+                    return float(pd.to_numeric(df[col], errors="coerce").mean())
+                except Exception:
+                    return 0.0
+            return 0.0
+ 
+        stats["avg_views"]      = _col_mean("view_count")
+        stats["avg_likes"]      = _col_mean("like_count")
+        stats["avg_comments"]   = _col_mean("comment_count")
+        stats["avg_engagement"] = _col_mean("total_engagement_rate")
+        stats["avg_eng_1000"]   = _col_mean("engagement_per_1000")
+        stats["avg_vsr"]        = _col_mean("view_subscriber_ratio")
+ 
+    # Subscriber watch %
+    subs = stats["subscriber_count"]
+    stats["sub_watch_pct"] = (
+        (stats["avg_views"] / subs * 100) if subs > 0 else 0.0
+    )
+ 
+    # Upload frequency
+    try:
+        pub_date = datetime.strptime(info["published_at"][:10], "%Y-%m-%d").date()
+        today    = datetime.now().date()
+        months   = (today.year - pub_date.year) * 12 + (today.month - pub_date.month)
+        months   = max(months, 1)
+        stats["upload_freq"] = stats["video_count"] / months
+    except Exception:
+        stats["upload_freq"] = 0.0
+ 
+    stats["creator_type"] = classify_creator(stats["upload_freq"])
+    return stats, df
+ 
+ 
+def compute_overall_score(stats):
+    """Weighted composite score for winner determination."""
+    score  = 0.0
+    score += min(stats.get("sub_watch_pct",  0.0), 100) * 0.20
+    score += min(stats.get("avg_engagement", 0.0), 50)  * 0.25
+    score += min(stats.get("avg_eng_1000",   0.0), 200) * 0.20
+    score += min(stats.get("upload_freq",    0.0), 20)  * 0.15
+    score += min(stats.get("avg_vsr",        0.0), 100) * 0.20
+    return round(score, 3)
+ 
+ 
+def section_header(icon_url, title):
+    st.markdown(f"""
+    <div class="section-header">
+        <img src="{icon_url}" width="32">
+        <h4>{title}</h4>
+    </div>""", unsafe_allow_html=True)
+ 
+ 
+def gauge_chart(value, max_val, title, suffix="", color="red", key="gauge"):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value,
+        number={"suffix": suffix},
+        title={"text": title, "font": {"color": "#f9fafb"}},
+        gauge={
+            "axis": {"range": [0, max_val], "tickcolor": "#9ca3af"},
+            "bar": {"color": "#CC0000"},
+            "bgcolor": "#1f2937",
+            "bordercolor": "#374151",
+            "steps": [
+                {"range": [0,   max_val * 0.20], "color": "#ffcccc"},
+                {"range": [max_val * 0.20, max_val * 0.40], "color": "#ff9999"},
+                {"range": [max_val * 0.40, max_val * 0.60], "color": "#ff6666"},
+                {"range": [max_val * 0.60, max_val * 0.80], "color": "#ff3333"},
+                {"range": [max_val * 0.80, max_val],        "color": "#cc0000"},
+            ],
+        }
+    ))
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=80, b=10),
+        height=280,
+        paper_bgcolor="#111827",
+        font={"color": "#f9fafb"}
+    )
+    st.plotly_chart(fig, use_container_width=True, key=key)
+ 
+ 
+def comparison_bar_html(label, val1, val2, name1, name2, fmt=".0f"):
+    total = val1 + val2
+    if total == 0:
+        p1, p2 = 50, 50
+    else:
+        p1 = round(val1 / total * 100)
+        p2 = 100 - p1
+    v1_str = f"{val1:{fmt}}"
+    v2_str = f"{val2:{fmt}}"
+    winner_cls1 = "color:#4ade80;font-weight:700;" if val1 >= val2 else ""
+    winner_cls2 = "color:#4ade80;font-weight:700;" if val2 >= val1 else ""
+    st.markdown(f"""
+    <div style="margin:10px 0;">
+        <div style="font-size:0.78rem;color:#9ca3af;margin-bottom:4px;">{label}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="min-width:70px;text-align:right;font-size:0.82rem;{winner_cls1}">{v1_str}</span>
+            <div style="flex:1;background:#374151;border-radius:6px;height:14px;overflow:hidden;display:flex;">
+                <div style="width:{p1}%;background:linear-gradient(90deg,#FF6666,#CC0000);height:14px;"></div>
+                <div style="width:{p2}%;background:linear-gradient(90deg,#4B5563,#374151);height:14px;"></div>
+            </div>
+            <span style="min-width:70px;font-size:0.82rem;{winner_cls2}">{v2_str}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#6b7280;margin-top:2px;">
+            <span>{name1}</span><span>{name2}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+ 
+ 
+def render_channel_column(info, stats, df, col_id):
+    """Render all per-channel charts & metrics inside a column."""
+    name = info["channel_name"]
+ 
+    # ── Card header ──────────────────────────────────────────────────────────
+    st.markdown(f"""
+    <div class="channel-card">
+        <p class="channel-name">📌 {name}</p>
+        <p class="channel-sub">Since {info['published_at'][:10]}</p>
+    </div>
+    """, unsafe_allow_html=True)
+ 
+    # ── Key metrics ──────────────────────────────────────────────────────────
+    m1, m2, m3 = st.columns(3)
+    m1.metric("👥 Subscribers",  f"{stats['subscriber_count']:,}")
+    m2.metric("👁️ Total Views",  f"{stats['view_count']:,}")
+    m3.metric("🎬 Total Videos", f"{stats['video_count']:,}")
+ 
+    if df.empty:
+        st.warning("No video data available.")
+        return
+ 
+    # ── Views per Video ───────────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/2088/2088617.png",
+        "Views per Video"
+    )
+    chart_df = df.sort_values("view_count", ascending=False)
+    st.bar_chart(
+        chart_df, x="title", y="view_count",
+        color="#FF0000FF", use_container_width=True
+    )
+ 
+    # ── Likes & Comments ─────────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/1077/1077035.png",
+        "Likes & Comments per Video"
+    )
+    lc_df  = df[["title", "like_count", "comment_count"]].copy()
+    base   = alt.Chart(lc_df).encode(
+        x=alt.X("title:N", title="Video Title", sort=None)
+    )
+    likes_line = base.mark_line(color="#FF0000", size=3).encode(
+        y=alt.Y("like_count:Q", title="Count"),
+        tooltip=["title", "like_count"]
+    )
+    comments_line = base.mark_line(color="#8B0000", size=3).encode(
+        y=alt.Y("comment_count:Q"),
+        tooltip=["title", "comment_count"]
+    )
+    final_chart = (likes_line + comments_line).properties(height=360).configure_axisX(
+        labelAngle=-45
+    )
+    st.altair_chart(final_chart, use_container_width=True)
+ 
+    # ── Engagement Rate ───────────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/3135/3135715.png",
+        "Avg Engagement Rate per Video"
+    )
+    eng_df = df[["title", "total_engagement_rate", "engagement_per_1000"]].copy()
+    eng_base = alt.Chart(eng_df).encode(
+        x=alt.X("title:N", sort=None, title="Video Title")
+    )
+    eng_bar = eng_base.mark_bar(color="#CC0000", opacity=0.75).encode(
+        y=alt.Y("total_engagement_rate:Q", title="Engagement Rate (%)"),
+        tooltip=["title", "total_engagement_rate"]
+    )
+    eng_line = eng_base.mark_line(color="#FF9999", size=2.5, point=True).encode(
+        y=alt.Y("engagement_per_1000:Q"),
+        tooltip=["title", "engagement_per_1000"]
+    )
+    eng_chart = alt.layer(eng_bar, eng_line).resolve_scale(y="independent").properties(
+        height=320
+    ).configure_axisX(labelAngle=-45)
+    st.altair_chart(eng_chart, use_container_width=True)
+ 
+    # ── Subscriber Watch % ────────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/1160/1160358.png",
+        "Subscriber Watch Percentage"
+    )
+    gauge_chart(
+        value=stats.get("sub_watch_pct", 0.0), max_val=100,
+        title="Subscribers Who Watch (%)", suffix="%",
+        key=f"sub_watch_{col_id}"
+    )
+ 
+    # ── Upload Frequency ──────────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/6586/6586210.png",
+        "Upload Frequency Analysis"
+    )
+    st.metric("Creator Type", stats.get("creator_type", "N/A"))
+    gauge_chart(
+        value=stats.get("upload_freq", 0.0), max_val=20,
+        title="Uploads per Month",
+        key=f"upload_freq_{col_id}"
+    )
+ 
+    # ── Duration Distribution ─────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/2088/2088427.png",
+        "Video Duration Distribution"
+    )
+    def dur_cat(d):
+        s = parse_iso_duration(d)
+        if s < 120:    return "Short (<2 min)"
+        elif s <= 600: return "Medium (2–10 min)"
+        else:          return "Long (>10 min)"
+ 
+    df_dur = df.copy()
+    df_dur["category"] = df_dur["duration"].apply(dur_cat)
+    dur_counts = df_dur["category"].value_counts().reset_index()
+    dur_counts.columns = ["Category", "Count"]
+ 
+    pie_fig = go.Figure(go.Pie(
+        labels=dur_counts["Category"],
+        values=dur_counts["Count"],
+        hole=0.48,
+        marker=dict(
+            colors=["#FFCCCC", "#FF6666", "#CC0000"],
+            line=dict(color="#111827", width=2)
+        ),
+        textfont=dict(color="white"),
+    ))
+    pie_fig.update_layout(
+        margin=dict(l=10, r=10, t=20, b=10),
+        height=260,
+        paper_bgcolor="#111827",
+        legend=dict(font=dict(color="#9ca3af"))
+    )
+    st.plotly_chart(pie_fig, use_container_width=True, key=f"dur_pie_{col_id}")
+ 
+    # ── Top Performing Video ──────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/4302/4302106.png",
+        "Best Performing Video"
+    )
+    df_bp = df.copy()
+    df_bp["perf_score"] = (
+        df_bp["total_engagement_rate"] * 0.4 +
+        df_bp["engagement_per_1000"]   * 0.3 +
+        df_bp["view_subscriber_ratio"] * 0.3
+    )
+    best = df_bp.loc[df_bp["perf_score"].idxmax()]
+    st.markdown(f"""
+    <div style="background:#1f2937;border:1px solid #374151;border-left:3px solid #CC0000;
+                border-radius:8px;padding:14px;margin:4px 0;">
+        <p style="font-weight:700;color:#f9fafb;margin:0 0 6px 0;">🥇 {best['title']}</p>
+        <p style="font-size:0.8rem;color:#9ca3af;margin:0;">
+            Published: {str(best['published_at'])[:10]} &nbsp;|&nbsp;
+            Views: {int(best['view_count']):,} &nbsp;|&nbsp;
+            Likes: {int(best['like_count']):,}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    bp1, bp2, bp3 = st.columns(3)
+    bp1.metric("Engagement Rate", f"{best['total_engagement_rate']:.2f}%")
+    bp2.metric("View/Sub Ratio",  f"{best['view_subscriber_ratio']:.2f}")
+    bp3.metric("Perf. Score",     f"{best['perf_score']:.2f}")
+ 
+    # ── Recent Video Analytics Table ──────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/9858/9858369.png",
+        "Recent Video Analytics"
+    )
+    df_disp = df.reset_index(drop=True)
+    df_disp.insert(0, "S.No", df_disp.index + 1)
+    st.dataframe(
+        df_disp[["S.No","title","view_count","like_count","comment_count",
+                 "total_engagement_rate","engagement_per_1000","view_subscriber_ratio"]],
+        column_config={
+            "S.No":                  st.column_config.NumberColumn("S.No", width="small"),
+            "title":                 "Video Title",
+            "view_count":            st.column_config.NumberColumn("Views",    format="%d 👀"),
+            "like_count":            st.column_config.NumberColumn("Likes",    format="%d 👍"),
+            "comment_count":         st.column_config.NumberColumn("Comments", format="%d 💬"),
+            "total_engagement_rate": st.column_config.NumberColumn("Eng. Rate", format="%.2f %%"),
+            "engagement_per_1000":   st.column_config.NumberColumn("Eng./1000", format="%.2f"),
+            "view_subscriber_ratio": st.column_config.NumberColumn("VSR",       format="%.2f"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )
+ 
+ 
+def render_head_to_head(info1, stats1, info2, stats2):
+    """Render the head-to-head comparison metrics section."""
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/6586/6586210.png",
+        "Head-to-Head Comparison"
+    )
+ 
+    n1 = info1["channel_name"]
+    n2 = info2["channel_name"]
+ 
+    comparison_bar_html("👥 Subscribers",
+        stats1.get("subscriber_count", 0), stats2.get("subscriber_count", 0), n1, n2, fmt=",")
+    comparison_bar_html("👁️ Total Views",
+        stats1.get("view_count", 0), stats2.get("view_count", 0), n1, n2, fmt=",")
+    comparison_bar_html("🎬 Total Videos",
+        stats1.get("video_count", 0), stats2.get("video_count", 0), n1, n2, fmt=",")
+    comparison_bar_html("📈 Avg Engagement Rate (%)",
+        stats1.get("avg_engagement", 0.0), stats2.get("avg_engagement", 0.0), n1, n2, fmt=".2f")
+    comparison_bar_html("💡 Avg Eng. per 1000 Views",
+        stats1.get("avg_eng_1000", 0.0), stats2.get("avg_eng_1000", 0.0), n1, n2, fmt=".2f")
+    comparison_bar_html("🔗 Avg View/Sub Ratio",
+        stats1.get("avg_vsr", 0.0), stats2.get("avg_vsr", 0.0), n1, n2, fmt=".2f")
+    comparison_bar_html("👁️‍🗨️ Subscriber Watch %",
+        stats1.get("sub_watch_pct", 0.0), stats2.get("sub_watch_pct", 0.0), n1, n2, fmt=".1f")
+    comparison_bar_html("🗓️ Uploads per Month",
+        stats1.get("upload_freq", 0.0), stats2.get("upload_freq", 0.0), n1, n2, fmt=".1f")
+ 
+ 
+def render_radar_chart(stats1, stats2, name1, name2):
+    """Plotly radar / spider chart comparing both channels."""
+    categories = [
+        "Subscriber\nWatch %",
+        "Avg\nEngagement",
+        "Eng / 1000",
+        "Upload\nFrequency",
+        "View/Sub\nRatio",
+    ]
+ 
+    # Normalise each metric to 0-100 for radar
+    def normalise(v, mx): return min(v / mx * 100, 100) if mx > 0 else 0
+ 
+    maxes = [100, 50, 200, 20, 100]
+    keys  = ["sub_watch_pct", "avg_engagement", "avg_eng_1000",
+             "upload_freq", "avg_vsr"]
+ 
+    vals1 = [normalise(stats1.get(k, 0.0), m) for k, m in zip(keys, maxes)]
+    vals2 = [normalise(stats2.get(k, 0.0), m) for k, m in zip(keys, maxes)]
+ 
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=vals1 + [vals1[0]], theta=categories + [categories[0]],
+        fill="toself", fillcolor="rgba(204,0,0,0.2)",
+        line=dict(color="#CC0000", width=2.5),
+        name=name1
+    ))
+    fig.add_trace(go.Scatterpolar(
+        r=vals2 + [vals2[0]], theta=categories + [categories[0]],
+        fill="toself", fillcolor="rgba(99,102,241,0.2)",
+        line=dict(color="#818CF8", width=2.5),
+        name=name2
+    ))
+    fig.update_layout(
+        polar=dict(
+            bgcolor="#1f2937",
+            radialaxis=dict(visible=True, range=[0, 100], gridcolor="#374151",
+                            tickfont=dict(color="#9ca3af"), linecolor="#374151"),
+            angularaxis=dict(gridcolor="#374151", linecolor="#374151",
+                             tickfont=dict(color="#d1d5db"))
+        ),
+        legend=dict(font=dict(color="#d1d5db"), bgcolor="#111827",
+                    bordercolor="#374151"),
+        paper_bgcolor="#111827",
+        margin=dict(l=50, r=50, t=50, b=50),
+        height=420,
+    )
+    st.plotly_chart(fig, use_container_width=True, key="radar_chart")
+ 
+ 
+def render_score_summary(stats1, stats2, name1, name2):
+    """Metric-by-metric scorecard."""
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/1705/1705312.png",
+        "Category Scorecard"
+    )
+ 
+    categories = [
+        ("👥 Subscribers",         stats1.get("subscriber_count", 0),  stats2.get("subscriber_count", 0),  ",d"),
+        ("👁️ Total Views",         stats1.get("view_count", 0),         stats2.get("view_count", 0),         ",d"),
+        ("📈 Avg Engagement Rate", stats1.get("avg_engagement", 0.0),   stats2.get("avg_engagement", 0.0),   ".2f"),
+        ("💡 Eng. / 1000 Views",   stats1.get("avg_eng_1000", 0.0),     stats2.get("avg_eng_1000", 0.0),     ".2f"),
+        ("🔗 View / Sub Ratio",    stats1.get("avg_vsr", 0.0),          stats2.get("avg_vsr", 0.0),          ".2f"),
+        ("👁️‍🗨️ Sub Watch %",       stats1.get("sub_watch_pct", 0.0),    stats2.get("sub_watch_pct", 0.0),    ".1f"),
+        ("🗓️ Uploads / Month",     stats1.get("upload_freq", 0.0),      stats2.get("upload_freq", 0.0),      ".1f"),
+    ]
+ 
+    hdr0, hdr1, hdr2, hdr3 = st.columns([3.5, 2, 2, 2])
+    hdr0.markdown(f"<span style='color:#9ca3af;font-size:0.8rem;'>Category</span>",
+                  unsafe_allow_html=True)
+    hdr1.markdown(f"<span style='color:#f87171;font-size:0.8rem;font-weight:700;'>{name1}</span>",
+                  unsafe_allow_html=True)
+    hdr2.markdown(f"<span style='color:#818cf8;font-size:0.8rem;font-weight:700;'>{name2}</span>",
+                  unsafe_allow_html=True)
+    hdr3.markdown(f"<span style='color:#9ca3af;font-size:0.8rem;'>Winner</span>",
+                  unsafe_allow_html=True)
+ 
+    wins1 = wins2 = 0
+    for cat, v1, v2, fmt in categories:
 
-col1, col2 = st.columns(2,gap="large")
+        try:
+            v1 = float(v1)
+        except:
+            v1 = 0
 
+        try:
+            v2 = float(v2)
+        except:
+            v2 = 0
+
+        # convert to int if format expects integer
+        if fmt == ",d":
+            v1 = int(v1)
+            v2 = int(v2)
+        c0, c1, c2, c3 = st.columns([3.5, 2, 2, 2])
+        c0.markdown(f"<span style='font-size:0.85rem;color:#d1d5db;'>{cat}</span>",
+                    unsafe_allow_html=True)
+        if v1 > v2:
+            c1.markdown(f"<span style='color:#4ade80;font-weight:700;font-size:0.9rem;'>{v1:{fmt}}</span>",
+                        unsafe_allow_html=True)
+            c2.markdown(f"<span style='color:#9ca3af;font-size:0.9rem;'>{v2:{fmt}}</span>",
+                        unsafe_allow_html=True)
+            c3.markdown("<span style='color:#4ade80;font-size:0.9rem;'>✅ " + name1[:14] + "</span>",
+                        unsafe_allow_html=True)
+            wins1 += 1
+        elif v2 > v1:
+            c1.markdown(f"<span style='color:#9ca3af;font-size:0.9rem;'>{v1:{fmt}}</span>",
+                        unsafe_allow_html=True)
+            c2.markdown(f"<span style='color:#4ade80;font-weight:700;font-size:0.9rem;'>{v2:{fmt}}</span>",
+                        unsafe_allow_html=True)
+            c3.markdown("<span style='color:#4ade80;font-size:0.9rem;'>✅ " + name2[:14] + "</span>",
+                        unsafe_allow_html=True)
+            wins2 += 1
+        else:
+            c1.markdown(f"<span style='font-size:0.9rem;'>{v1:{fmt}}</span>",
+                        unsafe_allow_html=True)
+            c2.markdown(f"<span style='font-size:0.9rem;'>{v2:{fmt}}</span>",
+                        unsafe_allow_html=True)
+            c3.markdown("<span style='color:#facc15;font-size:0.9rem;'>🤝 Tie</span>",
+                        unsafe_allow_html=True)
+        st.markdown("<hr style='border:none;border-top:1px solid #1f2937;margin:2px 0;'>",
+                    unsafe_allow_html=True)
+ 
+    return wins1, wins2
+ 
+ 
+def render_winner(info1, stats1, info2, stats2, wins1, wins2):
+    """Determine and display the winner banner."""
+    st.divider()
+    score1 = compute_overall_score(stats1)
+    score2 = compute_overall_score(stats2)
+    name1  = info1["channel_name"]
+    name2  = info2["channel_name"]
+ 
+    # Build insight bullets
+    def channel_insights(info, stats, is_winner):
+        insights = []
+        eng = stats.get("avg_engagement", 0.0)
+        swp = stats.get("sub_watch_pct", 0.0)
+        uf  = stats.get("upload_freq", 0.0)
+        if eng > 8:
+            insights.append("🔥 Excellent engagement rate — audience is highly interactive.")
+        elif eng > 4:
+            insights.append("📈 Good engagement — room for stronger CTAs.")
+        else:
+            insights.append("⚠️ Low engagement — improve thumbnails & hooks.")
+ 
+        if swp > 40:
+            insights.append("💪 Strong subscriber loyalty — majority actively watch.")
+        elif swp > 20:
+            insights.append("🤝 Moderate subscriber watch rate.")
+        else:
+            insights.append("❗ Many subscribers inactive — focus on retention.")
+ 
+        if uf >= 8:
+            insights.append("🔥 Highly active creator — algorithm loves this consistency.")
+        elif uf >= 4:
+            insights.append("📅 Good upload consistency.")
+        else:
+            insights.append("😴 Low upload frequency — increase consistency to grow faster.")
+        return insights
+ 
+    # Display score overview
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/2919/2919906.png",
+        "Overall Performance Score"
+    )
+    sc1, sc2, sc3 = st.columns([5, 1, 5])
+    with sc1:
+        bar1 = min(score1 / max(score1, score2, 1) * 100, 100)
+        st.markdown(f"""
+        <div style="background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px;text-align:center;">
+            <p style="color:#f87171;font-size:0.85rem;margin:0 0 4px 0;">{name1}</p>
+            <p style="font-size:2.4rem;font-weight:900;color:#CC0000;margin:0;">{score1:.1f}</p>
+            <div style="background:#374151;border-radius:6px;height:10px;margin-top:10px;overflow:hidden;">
+                <div style="width:{bar1:.0f}%;background:linear-gradient(90deg,#FF6666,#CC0000);height:10px;"></div>
+            </div>
+            <p style="color:#6b7280;font-size:0.75rem;margin:4px 0 0 0;">Category wins: {wins1}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with sc2:
+        st.markdown("<div style='text-align:center;padding-top:40px;font-size:1.4rem;color:#9ca3af;'>VS</div>",
+                    unsafe_allow_html=True)
+    with sc3:
+        bar2 = min(score2 / max(score1, score2, 1) * 100, 100)
+        st.markdown(f"""
+        <div style="background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px;text-align:center;">
+            <p style="color:#818cf8;font-size:0.85rem;margin:0 0 4px 0;">{name2}</p>
+            <p style="font-size:2.4rem;font-weight:900;color:#818cf8;margin:0;">{score2:.1f}</p>
+            <div style="background:#374151;border-radius:6px;height:10px;margin-top:10px;overflow:hidden;">
+                <div style="width:{bar2:.0f}%;background:linear-gradient(90deg,#818cf8,#6366f1);height:10px;"></div>
+            </div>
+            <p style="color:#6b7280;font-size:0.75rem;margin:4px 0 0 0;">Category wins: {wins2}</p>
+        </div>
+        """, unsafe_allow_html=True)
+ 
+    st.markdown("<br>", unsafe_allow_html=True)
+ 
+    # ── Winner Banner ─────────────────────────────────────────────────────────
+    MARGIN = 1.5
+ 
+    if abs(score1 - score2) < MARGIN and wins1 == wins2:
+        # Perfect tie
+        st.markdown(f"""
+        <div class="tie-badge">
+            <div style="font-size:2.5rem;margin-bottom:8px;">🤝</div>
+            <div class="tie-label">It's a Tie!</div>
+            <p style="color:#93c5fd;margin:6px 0 0 0;font-size:0.9rem;">
+                Both channels are incredibly close in performance.
+                Scores: <b>{name1}</b> {score1:.1f} vs <b>{name2}</b> {score2:.1f}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        winner_info, winner_stats = None, None
+        loser_info,  loser_stats  = None, None
+    else:
+        if score1 >= score2:
+            winner_info,  winner_stats  = info1, stats1
+            loser_info,   loser_stats   = info2, stats2
+            winner_wins,  loser_wins    = wins1, wins2
+        else:
+            winner_info,  winner_stats  = info2, stats2
+            loser_info,   loser_stats   = info1, stats1
+            winner_wins,  loser_wins    = wins2, wins1
+ 
+        w_name = winner_info["channel_name"]
+        w_score = compute_overall_score(winner_stats)
+        l_score = compute_overall_score(loser_stats)
+        margin_pct = abs(w_score - l_score) / max(l_score, 0.01) * 100
+ 
+        # Pick the strongest single reason
+        if winner_stats["avg_engagement"] > loser_stats["avg_engagement"] * 1.2:
+            reason = f"🔥 Superior engagement rate ({winner_stats['avg_engagement']:.1f}% vs {loser_stats['avg_engagement']:.1f}%)"
+        elif winner_stats["sub_watch_pct"] > loser_stats["sub_watch_pct"] * 1.2:
+            reason = f"💪 Higher subscriber watch rate ({winner_stats['sub_watch_pct']:.1f}% vs {loser_stats['sub_watch_pct']:.1f}%)"
+        elif winner_stats["upload_freq"] > loser_stats["upload_freq"] * 1.2:
+            reason = f"📅 More consistent uploads ({winner_stats['upload_freq']:.1f}/mo vs {loser_stats['upload_freq']:.1f}/mo)"
+        elif winner_stats["avg_vsr"] > loser_stats["avg_vsr"] * 1.2:
+            reason = f"🔗 Better view-to-subscriber ratio ({winner_stats['avg_vsr']:.2f} vs {loser_stats['avg_vsr']:.2f})"
+        else:
+            reason = f"📊 Overall composite score advantage ({w_score:.1f} vs {l_score:.1f})"
+ 
+        st.markdown(f"""
+        <div class="winner-banner">
+            <span class="winner-crown">🏆</span>
+            <p class="winner-label">🎉 &nbsp; Overall Winner &nbsp; 🎉</p>
+            <p class="winner-name">{w_name}</p>
+            <p style="color:#fca5a5;font-size:0.88rem;margin:2px 0;">
+                Score: <b>{w_score:.1f}</b> &nbsp;|&nbsp; Category Wins: <b>{winner_wins}</b> / {winner_wins + loser_wins}
+            </p>
+            <p class="winner-reason">⭐ Key Advantage: {reason}</p>
+            <p style="color:#d1fae5;font-size:0.8rem;margin-top:6px;">
+                Winning by <b>{margin_pct:.1f}%</b> overall performance margin
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+ 
+        # ── Channel-specific insight cards ────────────────────────────────────
+        ins_c1, ins_c2 = st.columns(2)
+        with ins_c1:
+            st.markdown(f"<p style='color:#4ade80;font-weight:700;margin-bottom:6px;'>✅ {winner_info['channel_name']} — Strengths</p>",
+                        unsafe_allow_html=True)
+            for ins in channel_insights(winner_info, winner_stats, True):
+                st.markdown(f"<div class='insight-win'>{ins}</div>", unsafe_allow_html=True)
+ 
+        with ins_c2:
+            st.markdown(f"<p style='color:#f87171;font-weight:700;margin-bottom:6px;'>💡 {loser_info['channel_name']} — Areas to Improve</p>",
+                        unsafe_allow_html=True)
+            for ins in channel_insights(loser_info, loser_stats, False):
+                st.markdown(f"<div class='insight-lose'>{ins}</div>", unsafe_allow_html=True)
+ 
+ 
+# ═════════════════════════════════════════════════════════════════════════════
+#  INPUT SECTION
+# ═════════════════════════════════════════════════════════════════════════════
+ 
+col1, col2 = st.columns(2, gap="large")
 with col1:
-    channel_1_input = st.text_input("Enter First Channel Name or URL")
-
+    channel_1_input = st.text_input(
+        "🔴 Enter First Channel Name or URL",
+        placeholder="e.g. MrBeast or youtube.com/@MrBeast"
+    )
 with col2:
-    channel_2_input = st.text_input("Enter Second Channel Name or URL")
-
-
-
-
-# Run analysis when button clicked
-compare_btn = st.button("Compare Channels 🚀")
-
+    channel_2_input = st.text_input(
+        "🟣 Enter Second Channel Name or URL",
+        placeholder="e.g. PewDiePie or youtube.com/@PewDiePie"
+    )
+ 
+compare_btn = st.button("⚡ Compare Channels", use_container_width=True, type="primary")
+ 
+# ── VS badge preview ──────────────────────────────────────────────────────────
+if channel_1_input and channel_2_input and not compare_btn:
+    n1_preview = channel_1_input[:20]
+    n2_preview = channel_2_input[:20]
+    st.markdown(f"""
+    <div class="vs-badge">{n1_preview} ⚔️ VS ⚔️ {n2_preview}</div>
+    """, unsafe_allow_html=True)
+ 
+# ─────────────────────────────────────────────────────────────────────────────
 if compare_btn:
-
     if channel_1_input and channel_2_input:
-
-        with st.spinner("Analyzing channels... ⏳", show_time=True):
-
+        with st.spinner("Analyzing both channels... ⏳", show_time=True):
             info1, data1 = run_full_channel_analysis(channel_1_input)
             info2, data2 = run_full_channel_analysis(channel_2_input)
-
+ 
             if info1 and info2:
                 st.session_state["info1"] = info1
                 st.session_state["data1"] = data1
                 st.session_state["info2"] = info2
                 st.session_state["data2"] = data2
-
-                st.toast("Channel analysis completed! ✅")
-
+                st.toast("Analysis complete! ✅")
             else:
-                st.error("Failed to analyze one or both channels.")
-
+                st.error("❌ Failed to analyze one or both channels. Check the names / URLs and retry.")
     else:
-        st.warning("Please enter both channel URLs or IDs.")
-
+        st.warning("⚠️ Please enter both channel names or URLs.")
+ 
+# ═════════════════════════════════════════════════════════════════════════════
+#  RESULTS
+# ═════════════════════════════════════════════════════════════════════════════
+ 
 if "info1" in st.session_state and "info2" in st.session_state:
-
+ 
     info1 = st.session_state["info1"]
-    info2 = st.session_state["info2"]
     data1 = st.session_state["data1"]
+    info2 = st.session_state["info2"]
     data2 = st.session_state["data2"]
-
-    col1, col2, = st.columns(2,gap="large")
-
-    with col1:
-        st.subheader(f"📌 {info1['channel_name']}")
-        st.metric("Subscribers", f"{int(info1['subscriber_count']):,}")
-        st.metric("Total Views", f"{int(info1['view_count']):,}")
-        st.metric("Total Videos", f"{int(info1['video_count']):,}")
-        
-        st.markdown(f"**Published At:** {info1['published_at']}")
-        st.divider()
-        if data1:
-         df = pd.DataFrame(data1)  
-
-         st.subheader("📊 Views per Video")
-
-         chart_df = df.sort_values(by="view_count", ascending=False)
-
-         st.bar_chart(
-                chart_df,
-                x="title",
-                y="view_count",
-                color="#FF0000FF",
-                use_container_width=True
-            )
-         st.divider()
-        df = pd.DataFrame(data1)
-
-        st.subheader("📊 Likes and Comments per Video")
-
-            # Create chart dataframe using actual video title
-        chart_df = df[["title", "like_count", "comment_count"]].copy()
-
-            # Base chart
-        base = alt.Chart(chart_df).encode(
-                x=alt.X("title:N", title="Video Title", sort=None)
-            )
-
-            # Likes line
-        likes_line = base.mark_line(
-                color="#FF0000",
-                size=3
-            ).encode(
-                y=alt.Y("like_count:Q", title="Count"),
-                tooltip=["title", "like_count"]
-            )
-
-            # Comments line
-        comments_line = base.mark_line(
-                color="#8B0000",
-                size=3
-            ).encode(
-                y=alt.Y("comment_count:Q"),
-                tooltip=["title", "comment_count"]
-            )
-
-            # Rotate labels so they don’t overlap
-        final_chart = (likes_line + comments_line).properties(
-                height=400
-            ).configure_axisX(
-                labelAngle=-45
-            )
-        
-
-        df = pd.DataFrame(data1)
-
-        try:
-            average_views = float(df["view_count"].mean())
-            total_subscribers = int(info1["subscriber_count"])
-            subscriber_watch_percent = (
-                (average_views / total_subscribers) * 100
-                if total_subscribers > 0 else 0
-            )
-        except (ValueError, TypeError):
-            subscriber_watch_percent = 0
-        st.altair_chart(final_chart, use_container_width=True)
-
-
-        st.subheader("👥 Subscriber Watch Percentage")  
-        st.divider()
-        fig_subs = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=subscriber_watch_percent,
-            number={"suffix": "%"},
-            title={"text": "Subscribers Who Watch (%)"},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "red"},
-                "steps": [
-                    {"range": [0, 20], "color": "#ffcccc"},
-                    {"range": [20, 40], "color": "#ff9999"},
-                    {"range": [40, 60], "color": "#ff6666"},
-                    {"range": [60, 80], "color": "#ff3333"},
-                    {"range": [80, 100], "color": "#cc0000"},
-                ],
-            }
-        ))
-
-        fig_subs.update_layout(
-            margin=dict(l=10, r=10, t=80, b=10),
-            height=300,
-        )
-
-        st.plotly_chart(fig_subs, use_container_width=True)
-        st.divider()
-        st.subheader("🔥 Upload Frequency Analysis")
-
-        try:
-            total_videos = int(info1["video_count"])
-            published_date = datetime.strptime(info1["published_at"][:10], "%Y-%m-%d").date()
-            current_date = datetime.now().date()
-
-            channel_age_months = (
-                (current_date.year - published_date.year) * 12
-                + (current_date.month - published_date.month)
-            )
-
-            if channel_age_months <= 0:
-                channel_age_months = 1
-
-            upload_frequency = total_videos / channel_age_months
-
-        except Exception:
-            channel_age_months = 1
-            upload_frequency = 0
-
-        # Classification Logic
-        def classify_creator(freq):
-            if freq < 1:
-                return "😴 Inactive"
-            elif freq < 4:
-                return "🎥 Casual"
-            elif freq < 8:
-                return "📈 Consistent"
-            else:
-                return "🔥 Highly Active"
-
-        creator_type = classify_creator(upload_frequency)
-
-        
-
-        
-        st.metric("Creator Type", creator_type)
-
-        # Gauge
-        fig_freq = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=upload_frequency,
-            title={"text": "Uploads per Month"},
-            gauge={
-                "axis": {"range": [0, 20]},
-                "bar": {"color": "red"},
-                "steps": [
-                        {"range": [0, 1], "color": "#ffcccc"},
-                        {"range": [1, 4], "color": "#ff9999"},
-                        {"range": [4, 8], "color": "#ff6666"},
-                        {"range": [8, 12], "color": "#ff3333"},
-                        {"range": [12, 20], "color": "#cc0000"},
-                ],
-            }
-        ))
-
-        fig_freq.update_layout(
-            margin=dict(l=10, r=10, t=80, b=10),
-            height=300,
-        )
-
-        st.plotly_chart(fig_freq, use_container_width=True)
-
-
-
-       
-
-
-
-        
-       
-
-    with col2:
-        st.subheader(f"📌 {info2['channel_name']}")
-        st.metric("Subscribers", f"{int(info2['subscriber_count']):,}")
-        st.metric("Total Views", f"{int(info2['view_count']):,}")
-        st.metric("Total Videos", f"{int(info2['video_count']):,}")
-        st.markdown(f"**Published At:** {info2['published_at']}")
-        st.divider()
-        if data2:
-         df = pd.DataFrame(data2)  
-
-         st.subheader("📊 Views per Video")
-
-         chart_df = df.sort_values(by="view_count", ascending=False)
-
-         st.bar_chart(
-                chart_df,
-                x="title",
-                y="view_count",
-                color="#FF0000FF",
-                use_container_width=True
-            )
-         st.divider()
-        df = pd.DataFrame(data2)
-
-        st.subheader("📊 Likes and Comments per Video")
-
-            # Create chart dataframe using actual video title
-        chart_df = df[["title", "like_count", "comment_count"]].copy()
-
-            # Base chart
-        base = alt.Chart(chart_df).encode(
-                x=alt.X("title:N", title="Video Title", sort=None)
-            )
-
-            # Likes line
-        likes_line = base.mark_line(
-                color="#FF0000",
-                size=3
-            ).encode(
-                y=alt.Y("like_count:Q", title="Count"),
-                tooltip=["title", "like_count"]
-            )
-
-            # Comments line
-        comments_line = base.mark_line(
-                color="#8B0000",
-                size=3
-            ).encode(
-                y=alt.Y("comment_count:Q"),
-                tooltip=["title", "comment_count"]
-            )
-
-            # Rotate labels so they don’t overlap
-        final_chart = (likes_line + comments_line).properties(
-                height=400
-            ).configure_axisX(
-                labelAngle=-45
-            )
-
-        st.altair_chart(final_chart, use_container_width=True)
-        df = pd.DataFrame(data2)
-
-        try:
-            average_views = float(df["view_count"].mean())
-            total_subscribers = int(info2["subscriber_count"])
-            subscriber_watch_percent = (
-                (average_views / total_subscribers) * 100
-                if total_subscribers > 0 else 0
-            )
-        except (ValueError, TypeError):
-            subscriber_watch_percent = 0
-        st.divider()
-        st.subheader("👥 Subscriber Watch Percentage")  
-        fig_subs = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=subscriber_watch_percent,
-            number={"suffix": "%"},
-            title={"text": "Subscribers Who Watch (%)"},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "red"},
-                "steps": [
-                    {"range": [0, 20], "color": "#ffcccc"},
-                    {"range": [20, 40], "color": "#ff9999"},
-                    {"range": [40, 60], "color": "#ff6666"},
-                    {"range": [60, 80], "color": "#ff3333"},
-                    {"range": [80, 100], "color": "#cc0000"},
-                ],
-            }
-        ))
-
-        fig_subs.update_layout(
-            margin=dict(l=10, r=10, t=80, b=10),
-            height=300,
-        )
-
-        st.plotly_chart(fig_subs, use_container_width=True, key="subs_watch_2")
-        st.divider()
-        st.subheader("🔥 Upload Frequency Analysis")
-
-        try:
-            total_videos = int(info2["video_count"])
-            published_date = datetime.strptime(info2["published_at"][:10], "%Y-%m-%d").date()
-            current_date = datetime.now().date()
-
-            channel_age_months = (
-                (current_date.year - published_date.year) * 12
-                + (current_date.month - published_date.month)
-            )
-
-            if channel_age_months <= 0:
-                channel_age_months = 1
-
-            upload_frequency = total_videos / channel_age_months
-
-        except Exception:
-            channel_age_months = 1
-            upload_frequency = 0
-
-        # Classification Logic
-        def classify_creator(freq):
-            if freq < 1:
-                return "😴 Inactive"
-            elif freq < 4:
-                return "🎥 Casual"
-            elif freq < 8:
-                return "📈 Consistent"
-            else:
-                return "🔥 Highly Active"
-
-        creator_type = classify_creator(upload_frequency)
-
-        
-        st.metric("Creator Type", creator_type)
-
-        # Gauge
-        fig_freq = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=upload_frequency,
-            title={"text": "Uploads per Month"},
-            gauge={
-                "axis": {"range": [0, 30]},
-                "bar": {"color": "red"},
-                "steps": [
-                        {"range": [0, 6], "color": "#ffcccc"},
-                        {"range": [6, 12], "color": "#ff9999"},
-                        {"range": [12, 18], "color": "#ff6666"},
-                        {"range": [18, 24], "color": "#ff3333"},
-                        {"range": [24, 30], "color": "#cc0000"},
-                ],
-            }
-        ))
-
-        fig_freq.update_layout(
-            margin=dict(l=10, r=10, t=80, b=10),
-            height=300,
-        )
-
-        st.plotly_chart(fig_freq, use_container_width=True, key="upload_freq_2")
-    st.divider()    
-    st.title("More features are Under Development! 🚧 Stay Tuned....................! ")       
-
-
-
+ 
+    # Always recompute stats fresh — never read stats from session_state
+    # so stale cached dicts (missing keys) can never cause KeyErrors
+    stats1, df1 = compute_channel_stats(info1, data1)
+    stats2, df2 = compute_channel_stats(info2, data2)
+ 
+    # Safety net: guarantee every key exists with a 0 fallback
+    _stat_defaults = {
+        "avg_views": 0.0, "avg_likes": 0.0, "avg_comments": 0.0,
+        "avg_engagement": 0.0, "avg_eng_1000": 0.0, "avg_vsr": 0.0,
+        "sub_watch_pct": 0.0, "upload_freq": 0.0, "creator_type": "N/A",
+        "subscriber_count": 0, "view_count": 0, "video_count": 0,
+    }
+    for _k, _v in _stat_defaults.items():
+        stats1.setdefault(_k, _v)
+        stats2.setdefault(_k, _v)
+ 
+    name1 = info1["channel_name"]
+    name2 = info2["channel_name"]
+ 
+    # ── Section: Side-by-side VS banner ──────────────────────────────────────
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;justify-content:center;gap:24px;
+                background:linear-gradient(135deg,#1f2937,#111827);
+                border:1px solid #374151;border-radius:14px;padding:18px;margin:16px 0;">
+        <div style="text-align:center;">
+            <p style="font-size:1.3rem;font-weight:900;color:#f87171;margin:0;">{name1}</p>
+            <p style="font-size:0.8rem;color:#9ca3af;margin:2px 0;">
+                {stats1['subscriber_count']:,} subscribers
+            </p>
+        </div>
+        <div style="font-size:2.2rem;font-weight:900;color:#CC0000;
+                    text-shadow:0 0 18px rgba(204,0,0,0.6);">⚔️ VS ⚔️</div>
+        <div style="text-align:center;">
+            <p style="font-size:1.3rem;font-weight:900;color:#818cf8;margin:0;">{name2}</p>
+            <p style="font-size:0.8rem;color:#9ca3af;margin:2px 0;">
+                {stats2['subscriber_count']:,} subscribers
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+ 
+    # ── Head-to-Head comparison bars ─────────────────────────────────────────
+    render_head_to_head(info1, stats1, info2, stats2)
+ 
+    # ── Radar Chart ───────────────────────────────────────────────────────────
+    st.divider()
+    section_header(
+        "https://cdn-icons-png.flaticon.com/128/9098/9098312.png",
+        "Performance Radar"
+    )
+    render_radar_chart(stats1, stats2, name1, name2)
+ 
+    # ── Per-channel detailed analysis (side by side) ──────────────────────────
+    st.divider()
+    st.markdown(f"""
+    <div class="section-header">
+        <img src="https://cdn-icons-png.flaticon.com/128/9858/9858369.png" width="32">
+        <h4>Detailed Channel Breakdown</h4>
+    </div>
+    """, unsafe_allow_html=True)
+ 
+    col_a, col_b = st.columns(2, gap="large")
+    with col_a:
+        render_channel_column(info1, stats1, df1, col_id="ch1")
+    with col_b:
+        render_channel_column(info2, stats2, df2, col_id="ch2")
+ 
+    # ── Score Summary Table ───────────────────────────────────────────────────
+    # ── Score Summary Table ───────────────────────────────────────────────────
+    wins1, wins2 = render_score_summary(stats1, stats2, name1, name2)
+ 
+    # ── Winner Section ────────────────────────────────────────────────────────
+    render_winner(info1, stats1, info2, stats2, wins1, wins2)
+ 
+    st.divider()
+    st.markdown(
+        "<p style='color:#6b7280;font-size:0.82rem;text-align:center;'>"
+        "📊 Analysis based on the 10 most recent videos &nbsp;|&nbsp; "
+        "Composite score weights: Engagement 25%, Sub Watch 20%, Eng/1000 20%, VSR 20%, Upload Freq 15%"
+        "</p>",
+        unsafe_allow_html=True
+    )
+ 
+# ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 .footer {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    background-color: #0E1117;
-    color: white;
-    text-align: right;
-    padding: 10px;
-    font-size: 14px;
+    position: fixed; left: 0; bottom: 0; width: 100%;
+    background-color: #0E1117; color: white;
+    text-align: right; padding: 10px; font-size: 14px; z-index: 999;
 }
 </style>
-
-<div class="footer">
-    © 2026 InsightTube | Built with Streamlit 💙 | Pbo7
-</div>
+<div class="footer">© 2026 InsightTube | Built with Streamlit 💙 | Pbo7</div>
 """, unsafe_allow_html=True)
