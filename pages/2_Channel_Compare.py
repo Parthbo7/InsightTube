@@ -21,6 +21,15 @@ st.markdown("""
 .block-container { padding-top: 2rem; }
 [data-testid="stSidebar"] { background-color: #111827; }
 .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; }
+
+/* ── Metric Label and Value Styles ── */
+[data-testid="metric-container"] label {
+    font-size: 0.95rem !important;
+}
+[data-testid="metric-container"] > div > div > div:nth-child(2) {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+}
  
 /* ── section header cards ── */
 .section-header {
@@ -158,7 +167,20 @@ st.divider()
 # ═════════════════════════════════════════════════════════════════════════════
 #  HELPER FUNCTIONS
 # ═════════════════════════════════════════════════════════════════════════════
- 
+
+def format_number_to_millions(num):
+    """Convert numbers to millions format (1.46M, 554.66M, etc.)"""
+    try:
+        num = float(num)
+        if num >= 1_000_000:
+            return f"{num/1_000_000:.2f}M"
+        elif num >= 1_000:
+            return f"{num/1_000:.1f}K"
+        else:
+            return f"{int(num)}"
+    except:
+        return "0"
+
 def parse_iso_duration(duration):
     pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?'
     match = re.match(pattern, str(duration))
@@ -289,22 +311,29 @@ def comparison_bar_html(label, val1, val2, name1, name2, fmt=".0f"):
     else:
         p1 = round(val1 / total * 100)
         p2 = 100 - p1
-    v1_str = f"{val1:{fmt}}"
-    v2_str = f"{val2:{fmt}}"
+    
+    # Format values - use millions format for large numbers
+    if fmt == ",":
+        v1_str = format_number_to_millions(val1)
+        v2_str = format_number_to_millions(val2)
+    else:
+        v1_str = f"{val1:{fmt}}"
+        v2_str = f"{val2:{fmt}}"
+    
     winner_cls1 = "color:#4ade80;font-weight:700;" if val1 >= val2 else ""
     winner_cls2 = "color:#4ade80;font-weight:700;" if val2 >= val1 else ""
     st.markdown(f"""
     <div style="margin:10px 0;">
-        <div style="font-size:0.78rem;color:#9ca3af;margin-bottom:4px;">{label}</div>
+        <div style="font-size:0.9rem;color:#9ca3af;margin-bottom:6px;">{label}</div>
         <div style="display:flex;align-items:center;gap:8px;">
-            <span style="min-width:70px;text-align:right;font-size:0.82rem;{winner_cls1}">{v1_str}</span>
+            <span style="min-width:90px;text-align:right;font-size:1.1rem;font-weight:700;{winner_cls1}">{v1_str}</span>
             <div style="flex:1;background:#374151;border-radius:6px;height:14px;overflow:hidden;display:flex;">
                 <div style="width:{p1}%;background:linear-gradient(90deg,#FF6666,#CC0000);height:14px;"></div>
                 <div style="width:{p2}%;background:linear-gradient(90deg,#4B5563,#374151);height:14px;"></div>
             </div>
-            <span style="min-width:70px;font-size:0.82rem;{winner_cls2}">{v2_str}</span>
+            <span style="min-width:90px;font-size:1.1rem;font-weight:700;{winner_cls2}">{v2_str}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#6b7280;margin-top:2px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#6b7280;margin-top:4px;">
             <span>{name1}</span><span>{name2}</span>
         </div>
     </div>
@@ -325,8 +354,8 @@ def render_channel_column(info, stats, df, col_id):
  
     # ── Key metrics ──────────────────────────────────────────────────────────
     m1, m2, m3 = st.columns(3)
-    m1.metric("👥 Subscribers",  f"{stats['subscriber_count']:,}")
-    m2.metric("👁️ Total Views",  f"{stats['view_count']:,}")
+    m1.metric("👥 Subscribers",  format_number_to_millions(stats['subscriber_count']))
+    m2.metric("👁️ Total Views",  format_number_to_millions(stats['view_count']))
     m3.metric("🎬 Total Videos", f"{stats['video_count']:,}")
  
     if df.empty:
@@ -398,55 +427,48 @@ def render_channel_column(info, stats, df, col_id):
         "Subscriber Watch Percentage"
     )
     gauge_chart(
-        value=stats.get("sub_watch_pct", 0.0), max_val=100,
-        title="Subscribers Who Watch (%)", suffix="%",
-        key=f"sub_watch_{col_id}"
+        stats.get("sub_watch_pct", 0.0),
+        100.0,
+        "Avg % of Subscribers watching",
+        "%",
+        color="red",
+        key=f"gauge_sub_watch_{col_id}"
     )
  
-    # ── Upload Frequency ──────────────────────────────────────────────────────
+    # ── Avg Engagement Rate ────────────────────────────────────────────────────
     st.divider()
     section_header(
-        "https://cdn-icons-png.flaticon.com/128/6586/6586210.png",
-        "Upload Frequency Analysis"
+        "https://cdn-icons-png.flaticon.com/128/5629/5629985.png",
+        "Average Engagement Rate"
     )
-    st.metric("Creator Type", stats.get("creator_type", "N/A"))
     gauge_chart(
-        value=stats.get("upload_freq", 0.0), max_val=20,
-        title="Uploads per Month",
-        key=f"upload_freq_{col_id}"
+        stats.get("avg_engagement", 0.0),
+        50.0,
+        "Avg Engagement Rate",
+        "%",
+        color="red",
+        key=f"gauge_eng_{col_id}"
     )
  
-    # ── Duration Distribution ─────────────────────────────────────────────────
+    # ── Video Duration Distribution ────────────────────────────────────────────
     st.divider()
     section_header(
-        "https://cdn-icons-png.flaticon.com/128/2088/2088427.png",
+        "https://cdn-icons-png.flaticon.com/128/2469/2469822.png",
         "Video Duration Distribution"
     )
-    def dur_cat(d):
-        s = parse_iso_duration(d)
-        if s < 120:    return "Short (<2 min)"
-        elif s <= 600: return "Medium (2–10 min)"
-        else:          return "Long (>10 min)"
- 
     df_dur = df.copy()
-    df_dur["category"] = df_dur["duration"].apply(dur_cat)
-    dur_counts = df_dur["category"].value_counts().reset_index()
-    dur_counts.columns = ["Category", "Count"]
- 
-    pie_fig = go.Figure(go.Pie(
-        labels=dur_counts["Category"],
-        values=dur_counts["Count"],
-        hole=0.48,
-        marker=dict(
-            colors=["#FFCCCC", "#FF6666", "#CC0000"],
-            line=dict(color="#111827", width=2)
-        ),
-        textfont=dict(color="white"),
-    ))
+    df_dur["duration_sec"] = df_dur.get("duration", "PT0S").apply(parse_iso_duration)
+    df_dur["duration_min"] = df_dur["duration_sec"] / 60
+    dur_bins = [0, 5, 10, 20, 30, 60, 300]
+    dur_labels = ["<5min", "5-10min", "10-20min", "20-30min", "30-60min", ">60min"]
+    df_dur["dur_cat"] = pd.cut(df_dur["duration_min"], bins=dur_bins, labels=dur_labels, include_lowest=True)
+    dur_counts = df_dur["dur_cat"].value_counts().sort_index()
+    pie_fig = go.Figure(data=[go.Pie(
+        labels=dur_counts.index, values=dur_counts.values,
+        marker=dict(colors=["#FF0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#FFE6E6"])
+    )])
     pie_fig.update_layout(
-        margin=dict(l=10, r=10, t=20, b=10),
-        height=260,
-        paper_bgcolor="#111827",
+        paper_bgcolor="#111827", font=dict(color="#9ca3af"),
         legend=dict(font=dict(color="#9ca3af"))
     )
     st.plotly_chart(pie_fig, use_container_width=True, key=f"dur_pie_{col_id}")
@@ -468,10 +490,10 @@ def render_channel_column(info, stats, df, col_id):
     <div style="background:#1f2937;border:1px solid #374151;border-left:3px solid #CC0000;
                 border-radius:8px;padding:14px;margin:4px 0;">
         <p style="font-weight:700;color:#f9fafb;margin:0 0 6px 0;">🥇 {best['title']}</p>
-        <p style="font-size:0.8rem;color:#9ca3af;margin:0;">
+        <p style="font-size:0.9rem;color:#9ca3af;margin:0;">
             Published: {str(best['published_at'])[:10]} &nbsp;|&nbsp;
-            Views: {int(best['view_count']):,} &nbsp;|&nbsp;
-            Likes: {int(best['like_count']):,}
+            Views: {format_number_to_millions(best['view_count'])} &nbsp;|&nbsp;
+            Likes: {format_number_to_millions(best['like_count'])}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -604,13 +626,13 @@ def render_score_summary(stats1, stats2, name1, name2):
     ]
  
     hdr0, hdr1, hdr2, hdr3 = st.columns([3.5, 2, 2, 2])
-    hdr0.markdown(f"<span style='color:#9ca3af;font-size:0.8rem;'>Category</span>",
+    hdr0.markdown(f"<span style='color:#9ca3af;font-size:0.9rem;font-weight:700;'>Category</span>",
                   unsafe_allow_html=True)
-    hdr1.markdown(f"<span style='color:#f87171;font-size:0.8rem;font-weight:700;'>{name1}</span>",
+    hdr1.markdown(f"<span style='color:#f87171;font-size:0.9rem;font-weight:700;'>{name1}</span>",
                   unsafe_allow_html=True)
-    hdr2.markdown(f"<span style='color:#818cf8;font-size:0.8rem;font-weight:700;'>{name2}</span>",
+    hdr2.markdown(f"<span style='color:#818cf8;font-size:0.9rem;font-weight:700;'>{name2}</span>",
                   unsafe_allow_html=True)
-    hdr3.markdown(f"<span style='color:#9ca3af;font-size:0.8rem;'>Winner</span>",
+    hdr3.markdown(f"<span style='color:#9ca3af;font-size:0.9rem;font-weight:700;'>Winner</span>",
                   unsafe_allow_html=True)
  
     wins1 = wins2 = 0
@@ -630,182 +652,147 @@ def render_score_summary(stats1, stats2, name1, name2):
         if fmt == ",d":
             v1 = int(v1)
             v2 = int(v2)
+            v1_str = format_number_to_millions(v1)
+            v2_str = format_number_to_millions(v2)
+        else:
+            v1_str = f"{v1:{fmt}}"
+            v2_str = f"{v2:{fmt}}"
+        
         c0, c1, c2, c3 = st.columns([3.5, 2, 2, 2])
-        c0.markdown(f"<span style='font-size:0.85rem;color:#d1d5db;'>{cat}</span>",
+        c0.markdown(f"<span style='font-size:0.95rem;color:#d1d5db;'>{cat}</span>",
                     unsafe_allow_html=True)
         if v1 > v2:
-            c1.markdown(f"<span style='color:#4ade80;font-weight:700;font-size:0.9rem;'>{v1:{fmt}}</span>",
+            c1.markdown(f"<span style='color:#4ade80;font-weight:700;font-size:1.05rem;'>{v1_str}</span>",
                         unsafe_allow_html=True)
-            c2.markdown(f"<span style='color:#9ca3af;font-size:0.9rem;'>{v2:{fmt}}</span>",
+            c2.markdown(f"<span style='color:#9ca3af;font-size:1.05rem;'>{v2_str}</span>",
                         unsafe_allow_html=True)
-            c3.markdown("<span style='color:#4ade80;font-size:0.9rem;'>✅ " + name1[:14] + "</span>",
+            c3.markdown("<span style='color:#4ade80;font-size:1rem;'>✅ " + name1[:14] + "</span>",
                         unsafe_allow_html=True)
             wins1 += 1
         elif v2 > v1:
-            c1.markdown(f"<span style='color:#9ca3af;font-size:0.9rem;'>{v1:{fmt}}</span>",
+            c1.markdown(f"<span style='color:#9ca3af;font-size:1.05rem;'>{v1_str}</span>",
                         unsafe_allow_html=True)
-            c2.markdown(f"<span style='color:#4ade80;font-weight:700;font-size:0.9rem;'>{v2:{fmt}}</span>",
+            c2.markdown(f"<span style='color:#4ade80;font-weight:700;font-size:1.05rem;'>{v2_str}</span>",
                         unsafe_allow_html=True)
-            c3.markdown("<span style='color:#4ade80;font-size:0.9rem;'>✅ " + name2[:14] + "</span>",
+            c3.markdown("<span style='color:#4ade80;font-size:1rem;'>✅ " + name2[:14] + "</span>",
                         unsafe_allow_html=True)
             wins2 += 1
         else:
-            c1.markdown(f"<span style='font-size:0.9rem;'>{v1:{fmt}}</span>",
+            c1.markdown(f"<span style='color:#9ca3af;font-size:1.05rem;'>{v1_str}</span>",
                         unsafe_allow_html=True)
-            c2.markdown(f"<span style='font-size:0.9rem;'>{v2:{fmt}}</span>",
+            c2.markdown(f"<span style='color:#9ca3af;font-size:1.05rem;'>{v2_str}</span>",
                         unsafe_allow_html=True)
-            c3.markdown("<span style='color:#facc15;font-size:0.9rem;'>🤝 Tie</span>",
+            c3.markdown("<span style='color:#a8a29e;font-size:1rem;'>⚖️ Tie</span>",
                         unsafe_allow_html=True)
-        st.markdown("<hr style='border:none;border-top:1px solid #1f2937;margin:2px 0;'>",
-                    unsafe_allow_html=True)
- 
+
     return wins1, wins2
- 
- 
-def render_winner(info1, stats1, info2, stats2, wins1, wins2):
-    """Determine and display the winner banner."""
+
+
+def channel_insights(info, stats, is_winner):
+    """Generate insight bullets for a channel."""
+    insights = []
+    
+    if is_winner:
+        if stats.get("avg_engagement", 0) > 5:
+            insights.append(f"🔥 Exceptional engagement at {stats['avg_engagement']:.1f}% — stands out in crowded space")
+        if stats.get("sub_watch_pct", 0) > 20:
+            insights.append(f"👀 Strong subscriber watch: {stats['sub_watch_pct']:.1f}% watch each video")
+        if stats.get("upload_freq", 0) > 2:
+            insights.append(f"📅 Consistent uploads: {stats['upload_freq']:.1f}/mo keeps audience engaged")
+        if stats.get("avg_vsr", 0) > 30:
+            insights.append(f"🚀 Viral potential: View/subscriber ratio of {stats['avg_vsr']:.1f}")
+        if not insights:
+            insights.append("✨ Overall strong channel performance")
+    else:
+        if stats.get("avg_engagement", 0) < 3:
+            insights.append(f"⚡ Engagement opportunity: {stats['avg_engagement']:.1f}% vs competitor — increase calls-to-action")
+        if stats.get("sub_watch_pct", 0) < 10:
+            insights.append(f"👥 Subscriber retention: {stats['sub_watch_pct']:.1f}% watch — improve video relevance")
+        if stats.get("upload_freq", 0) < 1:
+            insights.append(f"📈 Upload frequency: {stats['upload_freq']:.1f}/mo — more consistent releases drive growth")
+        if stats.get("avg_vsr", 0) < 10:
+            insights.append(f"📊 View velocity: {stats['avg_vsr']:.1f} — optimize thumbnails & titles for CTR")
+        if not insights:
+            insights.append("💡 Focus on engagement metrics")
+    
+    return insights
+
+
+def render_winner(info1, stats1, info2, stats2, winner_wins, loser_wins):
+    """Determine and render the overall winner with detailed reasoning."""
     st.divider()
-    score1 = compute_overall_score(stats1)
-    score2 = compute_overall_score(stats2)
-    name1  = info1["channel_name"]
-    name2  = info2["channel_name"]
- 
-    # Build insight bullets
-    def channel_insights(info, stats, is_winner):
-        insights = []
-        eng = stats.get("avg_engagement", 0.0)
-        swp = stats.get("sub_watch_pct", 0.0)
-        uf  = stats.get("upload_freq", 0.0)
-        if eng > 8:
-            insights.append("🔥 Excellent engagement rate — audience is highly interactive.")
-        elif eng > 4:
-            insights.append("📈 Good engagement — room for stronger CTAs.")
-        else:
-            insights.append("⚠️ Low engagement — improve thumbnails & hooks.")
- 
-        if swp > 40:
-            insights.append("💪 Strong subscriber loyalty — majority actively watch.")
-        elif swp > 20:
-            insights.append("🤝 Moderate subscriber watch rate.")
-        else:
-            insights.append("❗ Many subscribers inactive — focus on retention.")
- 
-        if uf >= 8:
-            insights.append("🔥 Highly active creator — algorithm loves this consistency.")
-        elif uf >= 4:
-            insights.append("📅 Good upload consistency.")
-        else:
-            insights.append("😴 Low upload frequency — increase consistency to grow faster.")
-        return insights
- 
-    # Display score overview
     section_header(
-        "https://cdn-icons-png.flaticon.com/128/2919/2919906.png",
-        "Overall Performance Score"
+        "https://cdn-icons-png.flaticon.com/128/1995/1995467.png",
+        "🏆 Overall Winner Analysis"
     )
-    sc1, sc2, sc3 = st.columns([5, 1, 5])
-    with sc1:
-        bar1 = min(score1 / max(score1, score2, 1) * 100, 100)
-        st.markdown(f"""
-        <div style="background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px;text-align:center;">
-            <p style="color:#f87171;font-size:0.85rem;margin:0 0 4px 0;">{name1}</p>
-            <p style="font-size:2.4rem;font-weight:900;color:#CC0000;margin:0;">{score1:.1f}</p>
-            <div style="background:#374151;border-radius:6px;height:10px;margin-top:10px;overflow:hidden;">
-                <div style="width:{bar1:.0f}%;background:linear-gradient(90deg,#FF6666,#CC0000);height:10px;"></div>
-            </div>
-            <p style="color:#6b7280;font-size:0.75rem;margin:4px 0 0 0;">Category wins: {wins1}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    with sc2:
-        st.markdown("<div style='text-align:center;padding-top:40px;font-size:1.4rem;color:#9ca3af;'>VS</div>",
-                    unsafe_allow_html=True)
-    with sc3:
-        bar2 = min(score2 / max(score1, score2, 1) * 100, 100)
-        st.markdown(f"""
-        <div style="background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px;text-align:center;">
-            <p style="color:#818cf8;font-size:0.85rem;margin:0 0 4px 0;">{name2}</p>
-            <p style="font-size:2.4rem;font-weight:900;color:#818cf8;margin:0;">{score2:.1f}</p>
-            <div style="background:#374151;border-radius:6px;height:10px;margin-top:10px;overflow:hidden;">
-                <div style="width:{bar2:.0f}%;background:linear-gradient(90deg,#818cf8,#6366f1);height:10px;"></div>
-            </div>
-            <p style="color:#6b7280;font-size:0.75rem;margin:4px 0 0 0;">Category wins: {wins2}</p>
-        </div>
-        """, unsafe_allow_html=True)
- 
-    st.markdown("<br>", unsafe_allow_html=True)
- 
-    # ── Winner Banner ─────────────────────────────────────────────────────────
-    MARGIN = 1.5
- 
-    if abs(score1 - score2) < MARGIN and wins1 == wins2:
-        # Perfect tie
+
+    w_score = compute_overall_score(stats1)
+    l_score = compute_overall_score(stats2)
+    
+    if abs(w_score - l_score) < 0.5:
         st.markdown(f"""
         <div class="tie-badge">
-            <div style="font-size:2.5rem;margin-bottom:8px;">🤝</div>
-            <div class="tie-label">It's a Tie!</div>
-            <p style="color:#93c5fd;margin:6px 0 0 0;font-size:0.9rem;">
-                Both channels are incredibly close in performance.
-                Scores: <b>{name1}</b> {score1:.1f} vs <b>{name2}</b> {score2:.1f}
+            <span class="tie-label">⚖️ Virtual Tie</span>
+            <p style="color:#93c5fd;margin:8px 0 0 0;font-size:0.95rem;">
+                Both channels excel in different areas. {info1['channel_name']} ({w_score:.1f}) vs {info2['channel_name']} ({l_score:.1f})
             </p>
         </div>
         """, unsafe_allow_html=True)
-        winner_info, winner_stats = None, None
-        loser_info,  loser_stats  = None, None
+        return
+    
+    is_ch1_winner = w_score >= l_score
+    w_name = info1["channel_name"] if is_ch1_winner else info2["channel_name"]
+    l_name = info2["channel_name"] if is_ch1_winner else info1["channel_name"]
+    winner_stats = stats1 if is_ch1_winner else stats2
+    loser_stats = stats2 if is_ch1_winner else stats1
+    winner_wins = winner_wins if is_ch1_winner else loser_wins
+    loser_wins = loser_wins if is_ch1_winner else winner_wins
+    
+    margin_pct = abs(w_score - l_score) / ((w_score + l_score) / 2) * 100 if (w_score + l_score) > 0 else 0
+    
+    # Determine primary winning reason
+    reason = "📊 Balanced excellence across all metrics"
+    if winner_stats["subscriber_count"] > loser_stats["subscriber_count"] * 1.5:
+        reason = f"👥 Significantly larger audience ({format_number_to_millions(winner_stats['subscriber_count'])} vs {format_number_to_millions(loser_stats['subscriber_count'])})"
+    elif winner_stats["avg_engagement"] > loser_stats["avg_engagement"] * 1.3:
+        reason = f"📈 Superior engagement rate ({winner_stats['avg_engagement']:.1f}% vs {loser_stats['avg_engagement']:.1f}%)"
+    elif winner_stats["sub_watch_pct"] > loser_stats["sub_watch_pct"] * 1.2:
+        reason = f"💪 Higher subscriber watch rate ({winner_stats['sub_watch_pct']:.1f}% vs {loser_stats['sub_watch_pct']:.1f}%)"
+    elif winner_stats["upload_freq"] > loser_stats["upload_freq"] * 1.2:
+        reason = f"📅 More consistent uploads ({winner_stats['upload_freq']:.1f}/mo vs {loser_stats['upload_freq']:.1f}/mo)"
+    elif winner_stats["avg_vsr"] > loser_stats["avg_vsr"] * 1.2:
+        reason = f"🔗 Better view-to-subscriber ratio ({winner_stats['avg_vsr']:.2f} vs {loser_stats['avg_vsr']:.2f})"
     else:
-        if score1 >= score2:
-            winner_info,  winner_stats  = info1, stats1
-            loser_info,   loser_stats   = info2, stats2
-            winner_wins,  loser_wins    = wins1, wins2
-        else:
-            winner_info,  winner_stats  = info2, stats2
-            loser_info,   loser_stats   = info1, stats1
-            winner_wins,  loser_wins    = wins2, wins1
+        reason = f"📊 Overall composite score advantage ({w_score:.1f} vs {l_score:.1f})"
  
-        w_name = winner_info["channel_name"]
-        w_score = compute_overall_score(winner_stats)
-        l_score = compute_overall_score(loser_stats)
-        margin_pct = abs(w_score - l_score) / max(l_score, 0.01) * 100
+    st.markdown(f"""
+    <div class="winner-banner">
+        <span class="winner-crown">🏆</span>
+        <p class="winner-label">🎉 &nbsp; Overall Winner &nbsp; 🎉</p>
+        <p class="winner-name">{w_name}</p>
+        <p style="color:#fca5a5;font-size:1rem;margin:2px 0;">
+            Score: <b>{w_score:.1f}</b> &nbsp;|&nbsp; Category Wins: <b>{winner_wins}</b> / {winner_wins + loser_wins}
+        </p>
+        <p class="winner-reason">⭐ Key Advantage: {reason}</p>
+        <p style="color:#d1fae5;font-size:0.9rem;margin-top:6px;">
+            Winning by <b>{margin_pct:.1f}%</b> overall performance margin
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
  
-        # Pick the strongest single reason
-        if winner_stats["avg_engagement"] > loser_stats["avg_engagement"] * 1.2:
-            reason = f"🔥 Superior engagement rate ({winner_stats['avg_engagement']:.1f}% vs {loser_stats['avg_engagement']:.1f}%)"
-        elif winner_stats["sub_watch_pct"] > loser_stats["sub_watch_pct"] * 1.2:
-            reason = f"💪 Higher subscriber watch rate ({winner_stats['sub_watch_pct']:.1f}% vs {loser_stats['sub_watch_pct']:.1f}%)"
-        elif winner_stats["upload_freq"] > loser_stats["upload_freq"] * 1.2:
-            reason = f"📅 More consistent uploads ({winner_stats['upload_freq']:.1f}/mo vs {loser_stats['upload_freq']:.1f}/mo)"
-        elif winner_stats["avg_vsr"] > loser_stats["avg_vsr"] * 1.2:
-            reason = f"🔗 Better view-to-subscriber ratio ({winner_stats['avg_vsr']:.2f} vs {loser_stats['avg_vsr']:.2f})"
-        else:
-            reason = f"📊 Overall composite score advantage ({w_score:.1f} vs {l_score:.1f})"
+    # ── Channel-specific insight cards ────────────────────────────────────
+    ins_c1, ins_c2 = st.columns(2)
+    with ins_c1:
+        st.markdown(f"<p style='color:#4ade80;font-weight:700;margin-bottom:6px;font-size:1rem;'>✅ {w_name} — Strengths</p>",
+                    unsafe_allow_html=True)
+        for ins in channel_insights(info1 if is_ch1_winner else info2, winner_stats, True):
+            st.markdown(f"<div class='insight-win'>{ins}</div>", unsafe_allow_html=True)
  
-        st.markdown(f"""
-        <div class="winner-banner">
-            <span class="winner-crown">🏆</span>
-            <p class="winner-label">🎉 &nbsp; Overall Winner &nbsp; 🎉</p>
-            <p class="winner-name">{w_name}</p>
-            <p style="color:#fca5a5;font-size:0.88rem;margin:2px 0;">
-                Score: <b>{w_score:.1f}</b> &nbsp;|&nbsp; Category Wins: <b>{winner_wins}</b> / {winner_wins + loser_wins}
-            </p>
-            <p class="winner-reason">⭐ Key Advantage: {reason}</p>
-            <p style="color:#d1fae5;font-size:0.8rem;margin-top:6px;">
-                Winning by <b>{margin_pct:.1f}%</b> overall performance margin
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
- 
-        # ── Channel-specific insight cards ────────────────────────────────────
-        ins_c1, ins_c2 = st.columns(2)
-        with ins_c1:
-            st.markdown(f"<p style='color:#4ade80;font-weight:700;margin-bottom:6px;'>✅ {winner_info['channel_name']} — Strengths</p>",
-                        unsafe_allow_html=True)
-            for ins in channel_insights(winner_info, winner_stats, True):
-                st.markdown(f"<div class='insight-win'>{ins}</div>", unsafe_allow_html=True)
- 
-        with ins_c2:
-            st.markdown(f"<p style='color:#f87171;font-weight:700;margin-bottom:6px;'>💡 {loser_info['channel_name']} — Areas to Improve</p>",
-                        unsafe_allow_html=True)
-            for ins in channel_insights(loser_info, loser_stats, False):
-                st.markdown(f"<div class='insight-lose'>{ins}</div>", unsafe_allow_html=True)
+    with ins_c2:
+        st.markdown(f"<p style='color:#f87171;font-weight:700;margin-bottom:6px;font-size:1rem;'>💡 {l_name} — Areas to Improve</p>",
+                    unsafe_allow_html=True)
+        for ins in channel_insights(info2 if is_ch1_winner else info1, loser_stats, False):
+            st.markdown(f"<div class='insight-lose'>{ins}</div>", unsafe_allow_html=True)
  
  
 # ═════════════════════════════════════════════════════════════════════════════
@@ -826,7 +813,7 @@ with col2:
  
 compare_btn = st.button("⚡ Compare Channels", use_container_width=True, type="primary")
  
-# ── VS badge preview ──────────────────────────────────────────────────────────
+# ── VS badge preview ──────────────────────────────────────────────────────
 if channel_1_input and channel_2_input and not compare_btn:
     n1_preview = channel_1_input[:20]
     n2_preview = channel_2_input[:20]
@@ -888,17 +875,17 @@ if "info1" in st.session_state and "info2" in st.session_state:
                 background:linear-gradient(135deg,#1f2937,#111827);
                 border:1px solid #374151;border-radius:14px;padding:18px;margin:16px 0;">
         <div style="text-align:center;">
-            <p style="font-size:1.3rem;font-weight:900;color:#f87171;margin:0;">{name1}</p>
-            <p style="font-size:0.8rem;color:#9ca3af;margin:2px 0;">
-                {stats1['subscriber_count']:,} subscribers
+            <p style="font-size:1.4rem;font-weight:900;color:#f87171;margin:0;">{name1}</p>
+            <p style="font-size:0.95rem;color:#9ca3af;margin:4px 0;">
+                {format_number_to_millions(stats1['subscriber_count'])} subscribers
             </p>
         </div>
-        <div style="font-size:2.2rem;font-weight:900;color:#CC0000;
+        <div style="font-size:2.4rem;font-weight:900;color:#CC0000;
                     text-shadow:0 0 18px rgba(204,0,0,0.6);">⚔️ VS ⚔️</div>
         <div style="text-align:center;">
-            <p style="font-size:1.3rem;font-weight:900;color:#818cf8;margin:0;">{name2}</p>
-            <p style="font-size:0.8rem;color:#9ca3af;margin:2px 0;">
-                {stats2['subscriber_count']:,} subscribers
+            <p style="font-size:1.4rem;font-weight:900;color:#818cf8;margin:0;">{name2}</p>
+            <p style="font-size:0.95rem;color:#9ca3af;margin:4px 0;">
+                {format_number_to_millions(stats2['subscriber_count'])} subscribers
             </p>
         </div>
     </div>
@@ -939,7 +926,7 @@ if "info1" in st.session_state and "info2" in st.session_state:
  
     st.divider()
     st.markdown(
-        "<p style='color:#6b7280;font-size:0.82rem;text-align:center;'>"
+        "<p style='color:#6b7280;font-size:0.88rem;text-align:center;'>"
         "📊 Analysis based on the 10 most recent videos &nbsp;|&nbsp; "
         "Composite score weights: Engagement 25%, Sub Watch 20%, Eng/1000 20%, VSR 20%, Upload Freq 15%"
         "</p>",
