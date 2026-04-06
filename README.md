@@ -5,34 +5,15 @@ It leverages the **YouTube Data API v3** to fetch, analyze, and visualize channe
 
 ---
 
-## 🚀 Project Overview
+## 🚀 Live Demo
 
-InsightTube enables users to:
-- Analyze YouTube channels in depth  
-- Compare multiple creators  
-- Discover trending content  
-- Visualize performance metrics interactively  
+🔗 **Try the App:** [Click Here](https://insighttubeo7.streamlit.app/)
+
+> *(Replace with your deployed Streamlit / Render / HuggingFace / etc. link)*
 
 ---
 
-## 📁 Project Structure
-InsightTube/
-│
-├── Home.py # Main entry point (landing page + navigation)
-├── pages/
-│ ├── 1_Channel_Analysis.py # Single channel analytics
-│ ├── 2_Channel_Compare.py # Channel comparison tool
-│ ├── 3_About_Us.py # Project info & documentation
-│ ├── 4_Trending.py # Trending content dashboard
-│
-├── services.py # YouTube API integration
-├── analytics.py # Data processing & metrics calculation
-├── channel.py # Channel data handling
-├── video.py # Video data handling
-├── videodata.py # Video data models
-├── auth.py # API key & authentication handling
-
-The project follows a **Streamlit multi-page architecture**:
+📌 Follows a **Streamlit multi-page architecture**
 
 ---
 
@@ -60,7 +41,7 @@ The project follows a **Streamlit multi-page architecture**:
 ---
 
 ### 📊 Interactive Visualization
-- Dynamic charts using Pandas + visualization libraries  
+- Dynamic charts using Pandas + Plotly/Altair  
 - Clean and responsive data representation  
 
 ---
@@ -68,7 +49,24 @@ The project follows a **Streamlit multi-page architecture**:
 ### 🎨 Premium UI/UX
 - Dark theme with glassmorphism design  
 - Custom CSS styling  
-- Smooth navigation with Streamlit pages  
+- Smooth navigation  
+
+---
+
+## 🖼️ Screenshots
+
+> 📌 Add your app screenshots below
+
+<p align="center">
+  <img src="![Home_page-0001](https://github.com/user-attachments/assets/24c4bc8c-393b-452c-bd0f-504c7ca6dde6)
+" width="45%" />
+  <img src="your-image-link-2" width="45%" />
+</p>
+
+<p align="center">
+  <img src="your-image-link-3" width="45%" />
+  <img src="your-image-link-4" width="45%" />
+</p>
 
 ---
 
@@ -87,20 +85,20 @@ The project follows a **Streamlit multi-page architecture**:
 
 ## ⚙️ How It Works
 
-1. User inputs a YouTube channel or selects a feature  
+1. User inputs a YouTube channel  
 2. API fetches real-time data  
 3. Data is processed using analytics logic  
-4. Insights are displayed via interactive dashboards  
+4. Insights are displayed via dashboards  
 
 ---
 
 ## 🎯 Why InsightTube?
 
 - 📊 Real-time analytics  
-- ⚡ Fast and lightweight (Streamlit-based)  
+- ⚡ Fast and lightweight  
 - 🧠 Data-driven insights  
-- 🎨 Modern UI/UX  
-- 🔍 Useful for creators, analysts, and marketers  
+- 🎨 Clean UI/UX  
+- 🔍 Useful for creators & analysts  
 
 ---
 
@@ -108,22 +106,19 @@ The project follows a **Streamlit multi-page architecture**:
 
 - User authentication system  
 - Save & export reports  
-- AI-based video performance prediction  
+- AI-based predictions  
 - Multi-channel dashboards  
 - Mobile-friendly UI  
 
 ---
 
-## 👨‍💻 Developer
+## 👨‍💻 Author
 
-**Parth Pandurang Bulbule**  
-B.Tech IT | Developer | Data + AI Enthusiast 🚀  
+**Parth Pandurang Bulbule (pbo7)**  
+B.Tech IT | Developer | AI Enthusiast 🚀  
 
 ---
 
 ## ⭐ Final Thought
 
-**InsightTube transforms raw YouTube data into meaningful insights, helping creators and analysts make smarter decisions.**
-## Author
-Parth Bulbule...
----pbo7
+**InsightTube transforms raw YouTube data into meaningful insights.**
