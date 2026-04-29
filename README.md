@@ -9,7 +9,6 @@ It leverages the **YouTube Data API v3** to fetch, analyze, and visualize channe
 
 🔗 **Try the App:** [Click Here](https://insighttubeo7.streamlit.app/)
 
-> *(Replace with your deployed Streamlit / Render / HuggingFace / etc. link)*
 
 ---
 
