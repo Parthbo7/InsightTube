@@ -1,5 +1,7 @@
 from pyparsing import col
 import streamlit as st
+from streamlit_lottie import st_lottie
+from services import load_lottieurl
 import base64
 import os
 
@@ -40,42 +42,72 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# -------------------- Theme State --------------------
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'dark'
+
+# -------------------- Load Background Image --------------------
+# ... (rest of loading logic) ...
+
+# -------------------- Theme Variables --------------------
+theme = st.session_state.theme
+if theme == 'dark':
+    bg_color = '#0f172a'
+    text_color = '#F1F5F9'
+    subtext_color = '#E2E8F0'
+    card_bg = 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)'
+    sidebar_bg = 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%)'
+    card_border = 'rgba(148, 163, 184, 0.3)'
+    step_bg = 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.95) 100%)'
+    step_border = '#60A5FA'
+    metric_bg = '#1f2937'
+else:
+    bg_color = '#F8FAFC'
+    text_color = '#0F172A'
+    subtext_color = '#475569'
+    card_bg = '#FFFFFF'
+    sidebar_bg = '#F1F5F9'
+    card_border = '#E2E8F0'
+    step_bg = '#FFFFFF'
+    step_border = '#3B82F6'
+    metric_bg = '#FFFFFF'
+
 # -------------------- Global Styling & Background --------------------
-st.markdown("""
+st.markdown(f"""
 <style>
     /* Background Image - Only for App */
-    .stApp {
-        background-color: #0f172a;
-    }
+    .stApp {{
+        background-color: {bg_color};
+    }}
     
     /* Remove Streamlit padding from hero sections */
     .block-container [data-testid="stMarkdownContainer"]:has(.hero-top),
     .block-container [data-testid="stMarkdownContainer"]:has(.hero-tagline-section),
-    .block-container [data-testid="stMarkdownContainer"]:has(.hero-background) {
+    .block-container [data-testid="stMarkdownContainer"]:has(.hero-background) {{
         padding: 0 !important;
         margin: 0 !important;
-    }
+    }}
     
     /* Hero Top - Title Section */
-    .hero-top {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
+    .hero-top {{
+        background: {sidebar_bg if theme == 'dark' else bg_color};
         text-align: center;
         padding: 50px 20px 15px;
         margin: 0;
         width: 100%;
-    }
+    }}
     
     /* Hero Tagline - Just Above Image */
-    .hero-tagline-section {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
+    .hero-tagline-section {{
+        background: {sidebar_bg if theme == 'dark' else bg_color};
         text-align: center;
         padding: 10px 20px 10px;
         margin: 0;
         width: 100%;
-    }
+    }}
     
     /* Hero Section with Background Image */
-    .hero-background {
+    .hero-background {{
         background-image: __BG_IMAGE__;
         background-size: cover;
         background-position: center;
@@ -86,38 +118,38 @@ st.markdown("""
         margin-bottom: 20px;
         height: 500px;
         width: 100%;
-    }
+    }}
     
     /* Main container */
-    .block-container {
+    .block-container {{
         max-width: 100%;
         padding: 0;
         margin: 0;
-    }
+    }}
     
     /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+    [data-testid="stSidebar"] {{
+        background: {sidebar_bg} !important;
         backdrop-filter: none !important;
         border-right: 1px solid rgba(148, 163, 184, 0.2) !important;
-    }
+    }}
     
     /* Text colors */
-    h1, h2, h3, h4, h5, h6 {
-        color: #F1F5F9 !important;
+    h1, h2, h3, h4, h5, h6 {{
+        color: {text_color} !important;
         font-weight: 700 !important;
-    }
+    }}
     
-    p, span, label {
-        color: #E2E8F0 !important;
-    }
+    p, span, label {{
+        color: {subtext_color} !important;
+    }}
     
     /* Hero Section */
-    .hero-section {
+    .hero-section {{
         text-align: center;
-    }
+    }}
     
-    .hero-title {
+    .hero-title {{
         font-size: 3.2rem !important;
         font-weight: 800 !important;
         margin-bottom: 10px !important;
@@ -127,80 +159,76 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         background-clip: text;
         letter-spacing: -1px;
-    }
+    }}
     
-    .hero-subtitle {
+    .hero-subtitle {{
         font-size: 1.1rem !important;
-        color: #CBD5E1 !important;
+        color: {subtext_color} !important;
         font-weight: 400 !important;
         margin: 0 !important;
         padding: 0 !important;
-    }
+    }}
     
     /* Feature Cards */
-    .feature-card {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
-        border: 1px solid rgba(148, 163, 184, 0.3);
+    .feature-card {{
+        background: {card_bg};
+        border: 1px solid {card_border};
         border-radius: 16px;
         padding: 28px;
         backdrop-filter: none;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, {0.3 if theme == 'dark' else 0.1});
         cursor: pointer;
-    }
+    }}
     
-    .feature-card:hover {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+    .feature-card:hover {{
+        background: {sidebar_bg if theme == 'dark' else '#F1F5F9'};
         border-color: rgba(96, 165, 250, 0.5);
         transform: translateY(-8px);
         box-shadow: 0 16px 48px rgba(59, 130, 246, 0.3);
-    }
+    }}
     
-    .card-icon {
+    .card-icon {{
         font-size: 2.5rem;
         margin-bottom: 15px;
         display: block;
-    }
+    }}
     
-    .card-title {
+    .card-title {{
         font-size: 1.3rem !important;
         font-weight: 700 !important;
         margin-bottom: 10px !important;
-        color: #F1F5F9 !important;
-    }
+        color: {text_color} !important;
+    }}
     
-    .card-description {
+    .card-description {{
         font-size: 0.95rem !important;
-        color: #CBD5E1 !important;
+        color: {subtext_color} !important;
         line-height: 1.6 !important;
         margin: 0 !important;
-    }
+    }}
     
     /* Divider */
-    hr {
+    hr {{
         background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.3), transparent) !important;
         border: none !important;
         height: 1px !important;
         margin: 3rem 0 !important;
-    }
+    }}
     
     /* Section Title */
-    .section-title {
+    .section-title {{
         font-size: 2.2rem !important;
         font-weight: 800 !important;
         margin-bottom: 35px !important;
-        color: #F1F5F9 !important;
+        color: {text_color} !important;
         display: flex;
         align-items: center;
         gap: 15px;
-    }
-    
-    .section-icon {
-        font-size: 2rem;
-    }
+    }}
     
     /* Buttons */
-    .stButton > button {
+    .stButton > button {{
         background: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%) !important;
         color: white !important;
         border: none !important;
@@ -209,73 +237,49 @@ st.markdown("""
         font-weight: 600 !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3) !important;
-    }
+    }}
     
-    .stButton > button:hover {
+    .stButton > button:hover {{
         background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%) !important;
         box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5) !important;
         transform: translateY(-2px) !important;
-    }
+    }}
     
     /* Info boxes */
-    .stInfo {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.95) 100%) !important;
+    .stInfo {{
+        background: {metric_bg} !important;
         border-left: 4px solid #3B82F6 !important;
         border-radius: 10px !important;
         backdrop-filter: none !important;
-    }
+    }}
     
     /* Steps styling */
-    .step-container {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.95) 100%);
-        border-left: 4px solid #60A5FA;
+    .step-container {{
+        background: {step_bg};
+        border-left: 4px solid {step_border};
         border-radius: 10px;
         padding: 20px;
         margin: 15px 0;
         backdrop-filter: none;
-    }
+        box-shadow: 0 4px 6px rgba(0,0,0, {0.1 if theme == 'dark' else 0.05});
+    }}
     
-    .step-number {
-        display: inline-block;
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);
-        border-radius: 50%;
-        text-align: center;
-        line-height: 40px;
-        color: white;
-        font-weight: 700;
-        margin-right: 12px;
-        vertical-align: middle;
-    }
-    
-    /* Link styling */
-    a {
-        color: #60A5FA !important;
-        text-decoration: none !important;
-    }
-    
-    a:hover {
-        color: #93C5FD !important;
-        text-decoration: underline !important;
-    }
-    
-    /* Responsive design */
-    @media (max-width: 768px) {
-        .hero-title {
-            font-size: 2.5rem !important;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem !important;
-        }
-        
-        .section-title {
-            font-size: 1.8rem !important;
-        }
-    }
+    /* Theme Toggle Position */
+    .theme-toggle {{
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        z-index: 1000;
+    }}
 </style>
 """.replace('__BG_IMAGE__', bg_image_uri), unsafe_allow_html=True)
+
+# -------------------- Theme Toggle --------------------
+t_col1, t_col2 = st.columns([15, 1])
+with t_col2:
+    if st.button("🌙" if theme == 'dark' else "☀️", key="theme_toggle"):
+        st.session_state.theme = 'light' if theme == 'dark' else 'dark'
+        st.rerun()
 
 # -------------------- Sidebar Navigation --------------------
 with st.sidebar:
@@ -307,6 +311,8 @@ with st.sidebar:
     col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 # -------------------- Hero Section --------------------
+lottie_hero = load_lottieurl("https://lottie.host/8c8c50e9-7b3b-4696-9966-347472099395/1p1Y6Y6p1p.json")
+
 st.markdown("""
 <div class="hero-top">
     <h1 class="hero-title">InsightTube</h1>
@@ -314,9 +320,12 @@ st.markdown("""
 <div class="hero-tagline-section">
     <p class="hero-subtitle">Generate Smart Insights from YouTube Channels</p>
 </div>
-<div class="hero-background">
-</div>
 """, unsafe_allow_html=True)
+
+if lottie_hero:
+    st_lottie(lottie_hero, height=400, key="hero")
+else:
+    st.markdown('<div class="hero-background"></div>', unsafe_allow_html=True)
 
 st.divider()
 

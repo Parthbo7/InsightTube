@@ -1,4 +1,6 @@
 import streamlit as st
+from streamlit_lottie import st_lottie
+from services import load_lottieurl
 import pandas as pd
 import plotly.express as px
 from googleapiclient.discovery import build
@@ -199,155 +201,124 @@ def get_trending_videos(category_id=None):
 # -------------------------
 # RUN ANALYSIS
 # -------------------------
-if st.button("Analyze Trends"):
+if st.button("Analyze Trends", use_container_width=True, type="primary"):
 
-    df = get_trending_videos(category_id)
+    lottie_trend = load_lottieurl("https://lottie.host/149f706a-a289-48c0-8f69-7b3b3558c736/U6Y6Y6p1p.json")
+    
+    with st.spinner("Fetching latest trends..."):
+        if lottie_trend:
+            st_lottie(lottie_trend, height=200, key="trend_lottie")
+        df = get_trending_videos(category_id)
 
-    if df is None:
+    if df is None or df.empty:
         st.error("No trending videos found for this category.")
         st.stop()
 
-    st.subheader("📺 Top Trending Videos")
-    st.divider()
+    tab1, tab2, tab3, tab4 = st.tabs(["🔥 Top Videos", "🏆 Top Channels", "📊 Analytics", "🧠 Insights"])
 
-    cols_per_row = 3   # number of cards per row
+    with tab1:
+        st.subheader("📺 Top Trending Videos")
+        st.divider()
 
-    for i in range(0, len(df), cols_per_row):
+        cols_per_row = 3
+        for i in range(0, len(df), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for col, (_, row) in zip(cols, df.iloc[i:i+cols_per_row].iterrows()):
+                with col:
+                    channel_icon = get_channel_icon(row["channel_id"])
+                    st.image(row["thumbnail"], use_container_width=True)
+                    st.markdown(f"**{row['title'][:50]}...**" if len(row['title']) > 50 else f"**{row['title']}**")
+                    icon_col, name_col = st.columns([1,4])
+                    with icon_col:
+                        st.image(channel_icon, width=30)
+                    with name_col:
+                        st.write(row["channel"])
+                    
+                    st.caption(f"👁 {row['views']:,} views | 👍 {row['likes']:,} likes")
+                    video_url = f"https://www.youtube.com/watch?v={row['video_id']}"
+                    st.link_button("▶ Watch", video_url, use_container_width=True)
+                    st.divider()
 
-        cols = st.columns(cols_per_row)
+    with tab2:
+        st.subheader("🏆 Leading Channels in this Category")
+        st.divider()
 
-        for col, (_, row) in zip(cols, df.iloc[i:i+cols_per_row].iterrows()):
+        top_channels = df.groupby(["channel","channel_id"]).agg({
+            "views":"sum",
+            "title":"count"
+        }).reset_index()
 
-            with col:
+        top_channels = top_channels.rename(columns={"title":"trending_videos"})
+        top_channels = top_channels.sort_values(by="views", ascending=False).head(12).reset_index(drop=True)
 
-                channel_icon = get_channel_icon(row["channel_id"])
+        channel_ids = top_channels["channel_id"].tolist()
+        icons = get_channel_icons(channel_ids)
 
-                st.image(row["thumbnail"], use_container_width=True)
+        for i in range(0, len(top_channels), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for col, (_, row) in zip(cols, top_channels.iloc[i:i+cols_per_row].iterrows()):
+                with col:
+                    rank = top_channels.index.get_loc(row.name) + 1
+                    icon = icons.get(row["channel"], None)
+                    st.markdown(f"### #{rank}")
+                    if icon:
+                        st.image(icon, width=70)
+                    st.markdown(f"**{row['channel']}**")
+                    st.caption(f"🔥 {row['trending_videos']} Trending Videos")
+                    st.caption(f"👁 {row['views']:,} Views")
+                    channel_url = f"https://youtube.com/channel/{row['channel_id']}"
+                    st.link_button("Visit Channel", channel_url, use_container_width=True)
+                    st.divider()
 
-                st.markdown(f"**{row['title']}**")
+    with tab3:
+        st.subheader("📊 Category Analytics")
+        st.divider()
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            chart = px.pie(df, values="views", names="channel", title="Views Share by Channel", hole=0.4)
+            chart.update_layout(template="plotly_dark")
+            st.plotly_chart(chart, use_container_width=True)
+        
+        with c2:
+            engage_chart = px.bar(df.sort_values("engagement", ascending=False).head(10),
+                                  x="engagement", y="title", orientation="h", title="Top Engagement Leaderboard",
+                                  color_discrete_sequence=["#ef4444"])
+            engage_chart.update_layout(template="plotly_dark", yaxis={'showticklabels':False})
+            st.plotly_chart(engage_chart, use_container_width=True)
 
-                icon_col, name_col = st.columns([1,4])
+        st.divider()
+        st.subheader("📋 Trending Data Grid")
+        st.data_editor(
+            df[["title", "channel", "views", "likes", "comments", "engagement"]],
+            column_config={
+                "title": "Video Title",
+                "channel": "Channel",
+                "views": st.column_config.NumberColumn("Views", format="%d"),
+                "likes": st.column_config.NumberColumn("Likes", format="%d"),
+                "comments": st.column_config.NumberColumn("Comments", format="%d"),
+                "engagement": st.column_config.NumberColumn("Engagement", format="%d"),
+            },
+            hide_index=True,
+            use_container_width=True,
+            disabled=True
+        )
 
-                with icon_col:
-                    st.image(channel_icon, width=30)
-
-                with name_col:
-                    st.write(row["channel"])
-
-                st.caption(f"👁 {row['views']:,} views")
-                st.caption(f"👍 {row['likes']:,} likes")
-                st.caption(f"💬 {row['comments']:,} comments")
-
-                video_url = f"https://www.youtube.com/watch?v={row['video_id']}"
-                st.link_button("▶ Watch", video_url, use_container_width=True)
-    # -------------------------
-    # TOP CHANNELS
-    # -------------------------
-    
-    st.title("🏆 Top Channels")
-    st.divider()
-
-    top_channels = df.groupby(["channel","channel_id"]).agg({
-        "views":"sum",
-        "title":"count"
-    }).reset_index()
-
-    top_channels = top_channels.rename(columns={
-        "title":"trending_videos"
-    })
-
-    top_channels = top_channels.sort_values(
-        by="views",
-        ascending=False
-    ).head(12).reset_index(drop=True)
-
-
-    # fetch icons
-    channel_ids = top_channels["channel_id"].tolist()
-    icons = get_channel_icons(channel_ids)
-
-
-    cols_per_row = 3
-
-    for i in range(0, len(top_channels), cols_per_row):
-
-        cols = st.columns(cols_per_row)
-
-        for col, (_, row) in zip(cols, top_channels.iloc[i:i+cols_per_row].iterrows()):
-
-            with col:
-
-                rank = top_channels.index.get_loc(row.name) + 1
-
-                icon = icons.get(row["channel"], None)
-
-                if icon:
-                    st.image(icon, width=70)
-
-                st.markdown(f"### #{rank} {row['channel']}")
-
-                st.caption(f"🔥 {row['trending_videos']} Trending Videos")
-                st.caption(f"👁 {row['views']:,} Views")
-
-                channel_url = f"https://youtube.com/channel/{row['channel_id']}"
-                st.link_button("Visit Channel", channel_url, use_container_width=True)
-
-                st.divider()
+    with tab4:
+        st.subheader("🧠 Intelligence Insights")
+        avg_views = df["views"].mean()
+        
+        if avg_views > 5_000_000:
+            st.success("🔥 This category is highly competitive. Mass appeal content is currently dominating.")
+        elif avg_views > 1_000_000:
+            st.info("📈 Good growth category. Steady audience engagement detected.")
+        else:
+            st.warning("⚠️ Lower viral traction. Niche content might be better here.")
             
-
-    # -------------------------
-    # PIE CHART
-    # -------------------------
-
-    st.title("📊 Views Distribution")
-
-    chart = px.pie(
-        df,
-        values="views",
-        names="channel",
-        title="Views Share by Channel"
-    )
-
-    st.plotly_chart(chart, use_container_width=True)
-
-    # -------------------------
-    # ENGAGEMENT CHART
-    # -------------------------
-    st.divider()
-    st.title("📈 Engagement Leaderboard")
-
-    engage_chart = px.bar(
-        df.sort_values("engagement", ascending=False).head(10),
-        x="engagement",
-        y="title",
-        orientation="h"
-    )
-
-    st.plotly_chart(engage_chart, use_container_width=True)
-
-    # -------------------------
-    # AI INSIGHT
-    # -------------------------
-    st.divider()
-    st.title("🧠 Trend Insight")
-
-    avg_views = df["views"].mean()
-
-    if avg_views > 5_000_000:
-        st.success(
-            "This category is highly competitive with massive view counts. "
-            "Only high-quality or viral content performs well."
-        )
-
-    elif avg_views > 1_000_000:
-        st.info(
-            "This category has good engagement and steady growth potential."
-        )
-
-    else:
-        st.warning(
-            "This category currently has lower viral traction."
-        )
+        st.divider()
+        st.markdown("### 💡 Strategy Suggestion")
+        most_active_channel = df['channel'].value_counts().idxmax()
+        st.info(f"**{most_active_channel}** is the most active channel in this trending list. Analyzing their recent uploads could provide valuable content hooks.")
 st.markdown("""
 <style>
 .footer {

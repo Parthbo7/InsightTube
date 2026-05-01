@@ -1,4 +1,5 @@
 streamlit
+streamlit-lottie
 google-api-python-client
 requests
 supabase
@@ -12,3 +13,4 @@ numpy
 reportlab
 groq
 wordcloud
+groq
