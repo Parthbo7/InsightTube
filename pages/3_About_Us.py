@@ -63,6 +63,9 @@ with st.sidebar:
     col1,col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
     col2.page_link("pages/3_About_Us.py", label=" About Us")
+    col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
+    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 st.set_page_config(page_title="About Us", page_icon="🚀")
 

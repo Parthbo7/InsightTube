@@ -10,3 +10,5 @@ python-dotenv
 scikit-learn
 numpy
 reportlab
+groq
+wordcloud
