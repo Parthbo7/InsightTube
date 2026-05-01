@@ -4,6 +4,7 @@ from videodata import fetch_video_analytics
 from supabase import create_client
 from analytics import calculate_video_metrics, update_channel_avg_engagement
 import os
+import requests
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -22,6 +23,13 @@ try:
 except Exception as e:
     print(f"Failed to initialize Supabase client: {e}")
     supabase = None
+
+
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 
 def run_full_channel_analysis(channel_input):

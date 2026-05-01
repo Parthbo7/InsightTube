@@ -1,11 +1,13 @@
 import re
 import altair as alt
 import streamlit as st
+from streamlit_lottie import st_lottie
+from services import load_lottieurl, run_full_channel_analysis
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import numpy as np
 from datetime import datetime
-from services import run_full_channel_analysis
  
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -368,11 +370,10 @@ def render_channel_column(info, stats, df, col_id):
         "https://cdn-icons-png.flaticon.com/128/2088/2088617.png",
         "Views per Video"
     )
-    chart_df = df.sort_values("view_count", ascending=False)
-    st.bar_chart(
-        chart_df, x="title", y="view_count",
-        color="#FF0000FF", use_container_width=True
-    )
+    fig_views = px.bar(df.sort_values("view_count", ascending=False), 
+                       x="title", y="view_count", color_discrete_sequence=["#CC0000"])
+    fig_views.update_layout(height=400, template="plotly_dark", xaxis_title=None)
+    st.plotly_chart(fig_views, use_container_width=True, key=f"views_{col_id}")
  
     # ── Likes & Comments ─────────────────────────────────────────────────────
     st.divider()
@@ -380,97 +381,36 @@ def render_channel_column(info, stats, df, col_id):
         "https://cdn-icons-png.flaticon.com/128/1077/1077035.png",
         "Likes & Comments per Video"
     )
-    lc_df  = df[["title", "like_count", "comment_count"]].copy()
-    base   = alt.Chart(lc_df).encode(
-        x=alt.X("title:N", title="Video Title", sort=None)
-    )
-    likes_line = base.mark_line(color="#FF0000", size=3).encode(
-        y=alt.Y("like_count:Q", title="Count"),
-        tooltip=["title", "like_count"]
-    )
-    comments_line = base.mark_line(color="#8B0000", size=3).encode(
-        y=alt.Y("comment_count:Q"),
-        tooltip=["title", "comment_count"]
-    )
-    final_chart = (likes_line + comments_line).properties(height=360).configure_axisX(
-        labelAngle=-45
-    )
-    st.altair_chart(final_chart, use_container_width=True)
+    fig_lc = go.Figure()
+    fig_lc.add_trace(go.Scatter(x=df["title"], y=df["like_count"], name="Likes", line=dict(color="#FF0000", width=3)))
+    fig_lc.add_trace(go.Scatter(x=df["title"], y=df["comment_count"], name="Comments", line=dict(color="#8B0000", width=3)))
+    fig_lc.update_layout(height=400, template="plotly_dark", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    st.plotly_chart(fig_lc, use_container_width=True, key=f"lc_{col_id}")
  
     # ── Engagement Rate ───────────────────────────────────────────────────────
     st.divider()
     section_header(
         "https://cdn-icons-png.flaticon.com/128/3135/3135715.png",
-        "Avg Engagement Rate per Video"
+        "Engagement Analytics"
     )
-    eng_df = df[["title", "total_engagement_rate", "engagement_per_1000"]].copy()
-    eng_base = alt.Chart(eng_df).encode(
-        x=alt.X("title:N", sort=None, title="Video Title")
-    )
-    eng_bar = eng_base.mark_bar(color="#CC0000", opacity=0.75).encode(
-        y=alt.Y("total_engagement_rate:Q", title="Engagement Rate (%)"),
-        tooltip=["title", "total_engagement_rate"]
-    )
-    eng_line = eng_base.mark_line(color="#FF9999", size=2.5, point=True).encode(
-        y=alt.Y("engagement_per_1000:Q"),
-        tooltip=["title", "engagement_per_1000"]
-    )
-    eng_chart = alt.layer(eng_bar, eng_line).resolve_scale(y="independent").properties(
-        height=320
-    ).configure_axisX(labelAngle=-45)
-    st.altair_chart(eng_chart, use_container_width=True)
- 
-    # ── Subscriber Watch % ────────────────────────────────────────────────────
-    st.divider()
-    section_header(
-        "https://cdn-icons-png.flaticon.com/128/1160/1160358.png",
-        "Subscriber Watch Percentage"
-    )
-    gauge_chart(
-        stats.get("sub_watch_pct", 0.0),
-        100.0,
-        "Avg % of Subscribers watching",
-        "%",
-        color="red",
-        key=f"gauge_sub_watch_{col_id}"
-    )
- 
-    # ── Avg Engagement Rate ────────────────────────────────────────────────────
-    st.divider()
-    section_header(
-        "https://cdn-icons-png.flaticon.com/128/5629/5629985.png",
-        "Average Engagement Rate"
-    )
-    gauge_chart(
-        stats.get("avg_engagement", 0.0),
-        50.0,
-        "Avg Engagement Rate",
-        "%",
-        color="red",
-        key=f"gauge_eng_{col_id}"
-    )
+    fig_eng = px.line(df, x="title", y="total_engagement_rate", markers=True, 
+                      color_discrete_sequence=["#CC0000"])
+    fig_eng.update_layout(height=400, template="plotly_dark", yaxis_title="Eng. Rate (%)")
+    st.plotly_chart(fig_eng, use_container_width=True, key=f"eng_line_{col_id}")
  
     # ── Video Duration Distribution ────────────────────────────────────────────
     st.divider()
     section_header(
         "https://cdn-icons-png.flaticon.com/128/2469/2469822.png",
-        "Video Duration Distribution"
+        "Video Duration"
     )
     df_dur = df.copy()
     df_dur["duration_sec"] = df_dur.get("duration", "PT0S").apply(parse_iso_duration)
     df_dur["duration_min"] = df_dur["duration_sec"] / 60
-    dur_bins = [0, 5, 10, 20, 30, 60, 300]
-    dur_labels = ["<5min", "5-10min", "10-20min", "20-30min", "30-60min", ">60min"]
-    df_dur["dur_cat"] = pd.cut(df_dur["duration_min"], bins=dur_bins, labels=dur_labels, include_lowest=True)
-    dur_counts = df_dur["dur_cat"].value_counts().sort_index()
-    pie_fig = go.Figure(data=[go.Pie(
-        labels=dur_counts.index, values=dur_counts.values,
-        marker=dict(colors=["#FF0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#FFE6E6"])
-    )])
-    pie_fig.update_layout(
-        paper_bgcolor="#111827", font=dict(color="#9ca3af"),
-        legend=dict(font=dict(color="#9ca3af"))
-    )
+    
+    pie_fig = px.pie(df_dur, values="duration_min", names="title", hole=0.4,
+                    color_discrete_sequence=px.colors.sequential.Reds_r)
+    pie_fig.update_layout(height=400, template="plotly_dark", showlegend=False)
     st.plotly_chart(pie_fig, use_container_width=True, key=f"dur_pie_{col_id}")
  
     # ── Top Performing Video ──────────────────────────────────────────────────
@@ -492,15 +432,13 @@ def render_channel_column(info, stats, df, col_id):
         <p style="font-weight:700;color:#f9fafb;margin:0 0 6px 0;">🥇 {best['title']}</p>
         <p style="font-size:0.9rem;color:#9ca3af;margin:0;">
             Published: {str(best['published_at'])[:10]} &nbsp;|&nbsp;
-            Views: {format_number_to_millions(best['view_count'])} &nbsp;|&nbsp;
-            Likes: {format_number_to_millions(best['like_count'])}
+            Views: {format_number_to_millions(best['view_count'])}
         </p>
     </div>
     """, unsafe_allow_html=True)
-    bp1, bp2, bp3 = st.columns(3)
-    bp1.metric("Engagement Rate", f"{best['total_engagement_rate']:.2f}%")
-    bp2.metric("View/Sub Ratio",  f"{best['view_subscriber_ratio']:.2f}")
-    bp3.metric("Perf. Score",     f"{best['perf_score']:.2f}")
+    bp1, bp2 = st.columns(2)
+    bp1.metric("Eng. Rate", f"{best['total_engagement_rate']:.2f}%")
+    bp2.metric("Perf. Score", f"{best['perf_score']:.2f}")
  
     # ── Recent Video Analytics Table ──────────────────────────────────────────
     st.divider()
@@ -508,23 +446,19 @@ def render_channel_column(info, stats, df, col_id):
         "https://cdn-icons-png.flaticon.com/128/9858/9858369.png",
         "Recent Video Analytics"
     )
-    df_disp = df.reset_index(drop=True)
-    df_disp.insert(0, "S.No", df_disp.index + 1)
-    st.dataframe(
-        df_disp[["S.No","title","view_count","like_count","comment_count",
-                 "total_engagement_rate","engagement_per_1000","view_subscriber_ratio"]],
+    st.data_editor(
+        df[["title","view_count","like_count","comment_count","total_engagement_rate"]].reset_index(drop=True),
         column_config={
-            "S.No":                  st.column_config.NumberColumn("S.No", width="small"),
-            "title":                 "Video Title",
-            "view_count":            st.column_config.NumberColumn("Views",    format="%d 👀"),
-            "like_count":            st.column_config.NumberColumn("Likes",    format="%d 👍"),
-            "comment_count":         st.column_config.NumberColumn("Comments", format="%d 💬"),
-            "total_engagement_rate": st.column_config.NumberColumn("Eng. Rate", format="%.2f %%"),
-            "engagement_per_1000":   st.column_config.NumberColumn("Eng./1000", format="%.2f"),
-            "view_subscriber_ratio": st.column_config.NumberColumn("VSR",       format="%.2f"),
+            "title": "Video Title",
+            "view_count": st.column_config.NumberColumn("Views", format="%d"),
+            "like_count": st.column_config.NumberColumn("Likes", format="%d"),
+            "comment_count": st.column_config.NumberColumn("Comments", format="%d"),
+            "total_engagement_rate": st.column_config.NumberColumn("Eng %", format="%.2f%%"),
         },
         hide_index=True,
-        use_container_width=True
+        use_container_width=True,
+        disabled=True,
+        key=f"data_grid_{col_id}"
     )
  
  
@@ -824,7 +758,10 @@ if channel_1_input and channel_2_input and not compare_btn:
 # ─────────────────────────────────────────────────────────────────────────────
 if compare_btn:
     if channel_1_input and channel_2_input:
-        with st.spinner("Analyzing both channels... ⏳", show_time=True):
+        lottie_compare = load_lottieurl("https://lottie.host/5405494d-2b7e-41b9-9686-347472099395/35798741.json")
+        with st.spinner("Analyzing both channels... ⏳"):
+            if lottie_compare:
+                st_lottie(lottie_compare, height=200, key="compare_lottie")
             info1, data1 = run_full_channel_analysis(channel_1_input)
             info2, data2 = run_full_channel_analysis(channel_2_input)
  
@@ -850,12 +787,10 @@ if "info1" in st.session_state and "info2" in st.session_state:
     info2 = st.session_state["info2"]
     data2 = st.session_state["data2"]
  
-    # Always recompute stats fresh — never read stats from session_state
-    # so stale cached dicts (missing keys) can never cause KeyErrors
     stats1, df1 = compute_channel_stats(info1, data1)
     stats2, df2 = compute_channel_stats(info2, data2)
  
-    # Safety net: guarantee every key exists with a 0 fallback
+    # Safety net
     _stat_defaults = {
         "avg_views": 0.0, "avg_likes": 0.0, "avg_comments": 0.0,
         "avg_engagement": 0.0, "avg_eng_1000": 0.0, "avg_vsr": 0.0,
@@ -868,61 +803,73 @@ if "info1" in st.session_state and "info2" in st.session_state:
  
     name1 = info1["channel_name"]
     name2 = info2["channel_name"]
- 
-    # ── Section: Side-by-side VS banner ──────────────────────────────────────
-    st.markdown(f"""
-    <div style="display:flex;align-items:center;justify-content:center;gap:24px;
-                background:linear-gradient(135deg,#1f2937,#111827);
-                border:1px solid #374151;border-radius:14px;padding:18px;margin:16px 0;">
-        <div style="text-align:center;">
-            <p style="font-size:1.4rem;font-weight:900;color:#f87171;margin:0;">{name1}</p>
-            <p style="font-size:0.95rem;color:#9ca3af;margin:4px 0;">
-                {format_number_to_millions(stats1['subscriber_count'])} subscribers
-            </p>
+
+    # ── TABS ────────────────────────────────────────────────────────────────
+    tab_sum, tab_det, tab_score = st.tabs(["🥊 Comparison Summary", "📊 Detailed Breakdown", "🎯 Category Scorecard"])
+
+    with tab_sum:
+        # ── Section: Side-by-side VS banner ──────────────────────────────────────
+        st.markdown(f"""
+        <div style="display:flex;align-items:center;justify-content:center;gap:24px;
+                    background:linear-gradient(135deg,#1f2937,#111827);
+                    border:1px solid #374151;border-radius:14px;padding:18px;margin:16px 0;">
+            <div style="text-align:center;">
+                <p style="font-size:1.4rem;font-weight:900;color:#f87171;margin:0;">{name1}</p>
+                <p style="font-size:0.95rem;color:#9ca3af;margin:4px 0;">
+                    {format_number_to_millions(stats1['subscriber_count'])} subscribers
+                </p>
+            </div>
+            <div style="font-size:2.4rem;font-weight:900;color:#CC0000;
+                        text-shadow:0 0 18px rgba(204,0,0,0.6);">⚔️ VS ⚔️</div>
+            <div style="text-align:center;">
+                <p style="font-size:1.4rem;font-weight:900;color:#818cf8;margin:0;">{name2}</p>
+                <p style="font-size:0.95rem;color:#9ca3af;margin:4px 0;">
+                    {format_number_to_millions(stats2['subscriber_count'])} subscribers
+                </p>
+            </div>
         </div>
-        <div style="font-size:2.4rem;font-weight:900;color:#CC0000;
-                    text-shadow:0 0 18px rgba(204,0,0,0.6);">⚔️ VS ⚔️</div>
-        <div style="text-align:center;">
-            <p style="font-size:1.4rem;font-weight:900;color:#818cf8;margin:0;">{name2}</p>
-            <p style="font-size:0.95rem;color:#9ca3af;margin:4px 0;">
-                {format_number_to_millions(stats2['subscriber_count'])} subscribers
-            </p>
+        """, unsafe_allow_html=True)
+    
+        # ── Head-to-Head comparison bars ─────────────────────────────────────────
+        render_head_to_head(info1, stats1, info2, stats2)
+    
+        # ── Radar Chart ───────────────────────────────────────────────────────────
+        st.divider()
+        section_header(
+            "https://cdn-icons-png.flaticon.com/128/9098/9098312.png",
+            "Performance Radar"
+        )
+        render_radar_chart(stats1, stats2, name1, name2)
+
+        # ── Winner Section ────────────────────────────────────────────────────────
+        # We need wins1/wins2 here too, but they are calculated in score summary.
+        # Let's calculate them upfront or just render winner based on overall score.
+        w1, w2 = 0, 0
+        cats = [("subscriber_count", 0), ("view_count", 0), ("avg_engagement", 0), ("avg_eng_1000", 0), ("avg_vsr", 0), ("sub_watch_pct", 0), ("upload_freq", 0)]
+        for k, _ in cats:
+            if stats1.get(k, 0) > stats2.get(k, 0): w1 += 1
+            elif stats2.get(k, 0) > stats1.get(k, 0): w2 += 1
+        
+        render_winner(info1, stats1, info2, stats2, w1, w2)
+
+    with tab_det:
+        # ── Per-channel detailed analysis (side by side) ──────────────────────────
+        st.markdown(f"""
+        <div class="section-header">
+            <img src="https://cdn-icons-png.flaticon.com/128/9858/9858369.png" width="32">
+            <h4>Detailed Channel Breakdown</h4>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    
+        col_a, col_b = st.columns(2, gap="large")
+        with col_a:
+            render_channel_column(info1, stats1, df1, col_id="ch1")
+        with col_b:
+            render_channel_column(info2, stats2, df2, col_id="ch2")
  
-    # ── Head-to-Head comparison bars ─────────────────────────────────────────
-    render_head_to_head(info1, stats1, info2, stats2)
- 
-    # ── Radar Chart ───────────────────────────────────────────────────────────
-    st.divider()
-    section_header(
-        "https://cdn-icons-png.flaticon.com/128/9098/9098312.png",
-        "Performance Radar"
-    )
-    render_radar_chart(stats1, stats2, name1, name2)
- 
-    # ── Per-channel detailed analysis (side by side) ──────────────────────────
-    st.divider()
-    st.markdown(f"""
-    <div class="section-header">
-        <img src="https://cdn-icons-png.flaticon.com/128/9858/9858369.png" width="32">
-        <h4>Detailed Channel Breakdown</h4>
-    </div>
-    """, unsafe_allow_html=True)
- 
-    col_a, col_b = st.columns(2, gap="large")
-    with col_a:
-        render_channel_column(info1, stats1, df1, col_id="ch1")
-    with col_b:
-        render_channel_column(info2, stats2, df2, col_id="ch2")
- 
-    # ── Score Summary Table ───────────────────────────────────────────────────
-    # ── Score Summary Table ───────────────────────────────────────────────────
-    wins1, wins2 = render_score_summary(stats1, stats2, name1, name2)
- 
-    # ── Winner Section ────────────────────────────────────────────────────────
-    render_winner(info1, stats1, info2, stats2, wins1, wins2)
+    with tab_score:
+        # ── Score Summary Table ───────────────────────────────────────────────────
+        wins1, wins2 = render_score_summary(stats1, stats2, name1, name2)
  
     st.divider()
     st.markdown(

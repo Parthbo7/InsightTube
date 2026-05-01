@@ -2,6 +2,8 @@ import re
 import io
 import altair as alt
 import streamlit as st
+from streamlit_lottie import st_lottie
+from services import load_lottieurl, run_full_channel_analysis
 from video import get_10_recent_videos
 from channel import get_channel_id_from_url, fetch_channel_data
 from videodata import fetch_video_analytics
@@ -719,7 +721,11 @@ def run_full_channel_analysis_and_display(channel_input):
     _predicted_subs  = 0
     _growth_rate     = 0.0
 
+    lottie_loading = load_lottieurl("https://lottie.host/85265451-f761-4696-8566-733d0144f6f4/1p1Y6Y6p1p.json")
+    
     with st.spinner("Analyzing channel... This may take a moment."):
+        if lottie_loading:
+            st_lottie(lottie_loading, height=200, key="loading")
         channel_info, video_analytics = run_full_channel_analysis(channel_input)
 
     if not channel_info:
@@ -732,23 +738,6 @@ def run_full_channel_analysis_and_display(channel_input):
 
     st.title(f"Channel: [{channel_name}]({channel_url})")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Subscribers", f"{int(channel_info['subscriber_count']):,}")
-    col2.metric("Total Views",  f"{int(channel_info['view_count']):,}")
-    col3.metric("Total Videos", channel_info["video_count"])
-
-    st.divider()
-    col1, col2 = st.columns([1, 15])
-    col1.image("https://cdn-icons-png.flaticon.com/128/7739/7739187.png", width=50)
-    col2.subheader("Channel Description")
-    st.markdown(f"**Description:** {channel_info['description']}")
-    st.divider()
-    col1, col2 = st.columns([1, 15])
-    col1.image("https://cdn-icons-png.flaticon.com/128/10691/10691802.png", width=50)
-    col2.subheader("Channel Published Date")
-    st.markdown(f"**Published At:** {channel_info['published_at']}")
-    st.divider()
-
     # ── Build dataframe ───────────────────────────────────────────────────────
     if video_analytics:
         df = pd.DataFrame(video_analytics)
@@ -760,55 +749,39 @@ def run_full_channel_analysis_and_display(channel_input):
         st.warning("No video analytics data found.")
         return
 
-    # ── Views per Video ───────────────────────────────────────────────────────
-    col1, col2 = st.columns([1, 15])
-    col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=50)
-    col2.subheader("Views per Video")
-    chart_df = df.sort_values(by="view_count", ascending=False)
-    st.bar_chart(chart_df, x="title", y="view_count",
-                 color="#FF0000FF", use_container_width=True)
-    st.divider()
+    # ── Tabbed Layout ─────────────────────────────────────────────────────────
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🎬 Video Performance", "💰 Revenue & Growth", "🧠 AI Insights"])
 
-    # ── Likes & Comments ──────────────────────────────────────────────────────
-    col1, col2 = st.columns([1, 15])
-    col1.image("https://cdn-icons-png.flaticon.com/128/2285/2285636.png", width=50)
-    col2.subheader("Likes and Comments per Video")
-    chart_df2 = pd.DataFrame({
-        "Video Index": range(1, len(df) + 1),
-        "Likes":    df["like_count"].values,
-        "Comments": df["comment_count"].values,
-    })
-    base          = alt.Chart(chart_df2).encode(x=alt.X("Video Index:Q"))
-    likes_line    = base.mark_line(color="#FF0000", size=3).encode(
-        y=alt.Y("Likes:Q", title="Count"), tooltip=["Video Index", "Likes"])
-    comments_line = base.mark_line(color="#8B0000", size=3).encode(
-        y=alt.Y("Comments:Q"), tooltip=["Video Index", "Comments"])
-    st.altair_chart(likes_line + comments_line, use_container_width=True)
-    st.divider()
+    with tab1:
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Subscribers", f"{int(channel_info['subscriber_count']):,}")
+        col2.metric("Total Views",  f"{int(channel_info['view_count']):,}")
+        col3.metric("Total Videos", channel_info["video_count"])
 
-    # ── Engagement Gauges ─────────────────────────────────────────────────────
-    top_10_df        = df.sort_values(by="view_count", ascending=False).head(10)
-    _avg_engagement  = top_10_df["engagement_per_1000"].mean()
+        st.divider()
+        col_desc, col_date = st.columns(2)
+        with col_desc:
+            st.markdown(f"""
+            <div style="background-color: #1f2937; padding: 20px; border-radius: 10px; height: 100%;">
+                <h4 style="margin-top: 0;">📝 Description</h4>
+                <p style="font-size: 0.9rem;">{channel_info['description']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_date:
+            st.markdown(f"""
+            <div style="background-color: #1f2937; padding: 20px; border-radius: 10px; height: 100%;">
+                <h4 style="margin-top: 0;">📅 Channel Info</h4>
+                <p><b>Published At:</b> {channel_info['published_at']}</p>
+                <p><b>Channel ID:</b> {channel_id}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-    left_col, right_col = st.columns([1, 1], gap="large")
-    with left_col:
-        st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/2257/2257295.png" width="35">
-            <h4 style="margin:0;">Average Engagement per 1000 Views</h4>
-        </div>""", unsafe_allow_html=True)
-        fig_eng = go.Figure(go.Indicator(
-            mode="gauge+number", value=_avg_engagement,
-            title={"text": "Engagement / 1000"},
-            gauge={"axis": {"range": [0, 200]}, "bar": {"color": "red"},
-                   "steps": [{"range": [0,50], "color": "#ffcccc"},
-                              {"range": [50,100], "color": "#ff9999"},
-                              {"range": [100,150], "color": "#ff6666"},
-                              {"range": [150,200], "color": "#cc0000"}]}))
-        fig_eng.update_layout(margin=dict(l=10, r=10, t=80, b=10), height=300)
-        st.plotly_chart(fig_eng, use_container_width=True)
-
-    with right_col:
+        st.divider()
+        
+        # Engagement Gauges
+        top_10_df        = df.sort_values(by="view_count", ascending=False).head(10)
+        _avg_engagement  = top_10_df["engagement_per_1000"].mean()
+        
         try:
             average_views    = float(df["view_count"].mean())
             total_subs       = int(channel_info["subscriber_count"])
@@ -816,327 +789,216 @@ def run_full_channel_analysis_and_display(channel_input):
         except (ValueError, TypeError):
             _sub_watch_pct = 0
 
-        st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/3369/3369157.png" width="35">
-            <h4 style="margin:0;">Subscriber Watch Percentage</h4>
-        </div>""", unsafe_allow_html=True)
-        fig_subs = go.Figure(go.Indicator(
-            mode="gauge+number", value=_sub_watch_pct,
-            number={"suffix": "%"},
-            title={"text": "Subscribers Who Watch (%)"},
-            gauge={"axis": {"range": [0, 100]}, "bar": {"color": "red"},
-                   "steps": [{"range": [0,20], "color": "#ffcccc"},
-                              {"range": [20,40], "color": "#ff9999"},
-                              {"range": [40,60], "color": "#ff6666"},
-                              {"range": [60,80], "color": "#ff3333"},
-                              {"range": [80,100], "color": "#cc0000"}]}))
-        fig_subs.update_layout(margin=dict(l=10, r=10, t=80, b=10), height=300)
-        st.plotly_chart(fig_subs, use_container_width=True)
+        g_col1, g_col2 = st.columns(2)
+        with g_col1:
+            fig_eng = go.Figure(go.Indicator(
+                mode="gauge+number", value=_avg_engagement,
+                title={"text": "Engagement / 1000 Views", "font": {"size": 18}},
+                gauge={"axis": {"range": [0, 200]}, "bar": {"color": "#ef4444"},
+                       "steps": [{"range": [0,50], "color": "#fee2e2"},
+                                  {"range": [50,100], "color": "#fecaca"},
+                                  {"range": [100,150], "color": "#fca5a5"},
+                                  {"range": [150,200], "color": "#ef4444"}]}))
+            fig_eng.update_layout(margin=dict(l=20, r=20, t=50, b=20), height=300, paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"})
+            st.plotly_chart(fig_eng, use_container_width=True)
 
-    # ── Duration ──────────────────────────────────────────────────────────────
-    def categorize_duration(d):
-        s = parse_iso_duration(d)
-        if s < 120:   return "Short (<2 min)"
-        elif s <= 600: return "Medium (1–10 min)"
-        else:          return "Long (>10 min)"
+        with g_col2:
+            fig_subs = go.Figure(go.Indicator(
+                mode="gauge+number", value=_sub_watch_pct,
+                number={"suffix": "%"},
+                title={"text": "Subscriber Watch %", "font": {"size": 18}},
+                gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#ef4444"},
+                       "steps": [{"range": [0,20], "color": "#fee2e2"},
+                                  {"range": [20,40], "color": "#fecaca"},
+                                  {"range": [40,60], "color": "#fca5a5"},
+                                  {"range": [60,80], "color": "#ef4444"},
+                                  {"range": [80,100], "color": "#b91c1c"}]}))
+            fig_subs.update_layout(margin=dict(l=20, r=20, t=50, b=20), height=300, paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"})
+            st.plotly_chart(fig_subs, use_container_width=True)
 
-    df["duration_category"] = df["duration"].apply(categorize_duration)
-    _dur_counts = df["duration_category"].value_counts().reset_index()
-    _dur_counts.columns = ["Category", "Count"]
-
-    st.divider()
-    left_col, right_col = st.columns([1, 1], gap="large")
-    with left_col:
-        st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/12670/12670512.png" width="35">
-            <h4 style="margin:0;">Video Duration Distribution</h4>
-        </div>""", unsafe_allow_html=True)
-        red_palette = ["#ffcccc", "#ff6666", "#cc0000"]
-        fig_pie = go.Figure(data=[go.Pie(
-            labels=_dur_counts["Category"], values=_dur_counts["Count"],
-            hole=0.5,
-            marker=dict(colors=red_palette, line=dict(color="#111111", width=2)),
-            textinfo="percent+label")])
-        fig_pie.update_layout(
-            height=400, width=400, margin=dict(t=30, b=10, l=10, r=10),
-            showlegend=True, paper_bgcolor="#0e1117",
-            plot_bgcolor="#0e1117", font=dict(color="white"))
-        st.plotly_chart(fig_pie, use_container_width=False)
-
-    with right_col:
-        df = df.sort_values("published_at").reset_index(drop=True)
-        df["video_index"]    = df.index + 1
-        df["duration_minutes"] = df["duration"].apply(
-            lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
-        st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/670/670816.png" width="35">
-            <h4 style="margin:0;">Video Duration by Upload Order</h4>
-        </div>""", unsafe_allow_html=True)
-        duration_chart = alt.Chart(df).mark_bar(color="#cc0000").encode(
-            x=alt.X("video_index:O", title="Video Index"),
-            y=alt.Y("duration_minutes:Q", title="Duration (Minutes)"),
-            tooltip=["video_index", "duration_minutes"]).properties(height=400)
-        st.altair_chart(duration_chart, use_container_width=True)
-
-    # ── Upload Frequency ──────────────────────────────────────────────────────
-    st.divider()
-    st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/12822/12822821.png" width="35">
-            <h4 style="margin:0;">Upload Frequency Analysis</h4>
-        </div>""", unsafe_allow_html=True)
-    try:
-        total_videos  = int(channel_info["video_count"])
-        published_dt  = datetime.strptime(channel_info["published_at"][:10], "%Y-%m-%d").date()
-        current_date  = datetime.now().date()
-        channel_age_months = max(1,
-            (current_date.year  - published_dt.year)  * 12 +
-            (current_date.month - published_dt.month))
-        _upload_freq = total_videos / channel_age_months
-    except Exception:
-        channel_age_months = 1
-        _upload_freq = 0
-
-    def classify_creator(freq):
-        if freq < 1:   return "😴 Inactive"
-        elif freq < 4: return "🎥 Casual"
-        elif freq < 8: return "📈 Consistent"
-        else:          return "🔥 Highly Active"
-
-    creator_type = classify_creator(_upload_freq)
-    fc1, fc2, fc3 = st.columns(3)
-    fc1.metric("Channel Age (Months)", channel_age_months)
-    fc2.metric("Uploads per Month",    f"{_upload_freq:.2f}")
-    fc3.metric("Creator Type",         creator_type)
-
-    fig_freq = go.Figure(go.Indicator(
-        mode="gauge+number", value=_upload_freq,
-        title={"text": "Uploads per Month"},
-        gauge={"axis": {"range": [0, 20]}, "bar": {"color": "red"},
-               "steps": [{"range": [0,1],   "color": "#ffcccc"},
-                          {"range": [1,4],   "color": "#ff9999"},
-                          {"range": [4,8],   "color": "#ff6666"},
-                          {"range": [8,12],  "color": "#ff3333"},
-                          {"range": [12,20], "color": "#cc0000"}]}))
-    fig_freq.update_layout(margin=dict(l=10, r=10, t=80, b=10), height=300)
-    st.plotly_chart(fig_freq, use_container_width=True)
-
-    # ── Revenue ───────────────────────────────────────────────────────────────
-    def estimate_revenue(views, cpm, rate=0.55):
-        return round(views * rate / 1000 * cpm, 2)
-
-    USD_TO_INR   = 90
-    cpm_low      = 3  * USD_TO_INR
-    cpm_high     = 10 * USD_TO_INR
-    avg_cpm      = (cpm_low + cpm_high) / 2
-
-    if not df.empty and "view_count" in df.columns:
-        total_views   = df["view_count"].sum()
-        _low_est      = estimate_revenue(total_views, cpm_low)
-        _high_est     = estimate_revenue(total_views, cpm_high)
-        _rpm          = avg_cpm * 0.55
-        df["estimated_revenue"] = df["view_count"].apply(
-            lambda v: estimate_revenue(v, avg_cpm))
+    with tab2:
+        st.subheader("📊 Performance Trends")
+        
+        # Views per Video - Plotly
+        fig_views = go.Figure(data=[
+            go.Bar(x=df["title"], y=df["view_count"], marker_color="#ef4444")
+        ])
+        fig_views.update_layout(title="Views per Video", xaxis_title="Video Title", yaxis_title="Views", height=450, template="plotly_dark")
+        st.plotly_chart(fig_views, use_container_width=True)
+        
+        # Likes and Comments - Plotly
+        fig_lc = go.Figure()
+        fig_lc.add_trace(go.Scatter(x=list(range(1, len(df)+1)), y=df["like_count"], name="Likes", line=dict(color="#ef4444", width=3)))
+        fig_lc.add_trace(go.Scatter(x=list(range(1, len(df)+1)), y=df["comment_count"], name="Comments", line=dict(color="#991b1b", width=3)))
+        fig_lc.update_layout(title="Likes & Comments per Video", xaxis_title="Video Index", yaxis_title="Count", height=400, template="plotly_dark")
+        st.plotly_chart(fig_lc, use_container_width=True)
 
         st.divider()
-        st.markdown("""
-            <div style="display:flex; align-items:center; gap:10px;">
-                <img src="https://cdn-icons-png.flaticon.com/128/10384/10384161.png" width="45">
-                <h4 style="margin:0;">Revenue Estimation Dashboard (INR)</h4>
-            </div>""", unsafe_allow_html=True)
-        rc1, rc2, rc3 = st.columns(3)
-        rc1.metric("Estimated Revenue (Low)",       f"₹ {_low_est:,.2f}")
-        rc2.metric("Estimated Revenue (High)",      f"₹ {_high_est:,.2f}")
-        rc3.metric("Revenue per 1000 Views (RPM)", f"₹ {_rpm:,.2f}")
-    else:
-        st.warning("Insufficient data to estimate revenue.")
+        
+        # Duration Analysis
+        st.subheader("⏳ Duration Insights")
+        d_col1, d_col2 = st.columns(2)
+        
+        def categorize_duration(d):
+            s = parse_iso_duration(d)
+            if s < 120:   return "Short (<2 min)"
+            elif s <= 600: return "Medium (1–10 min)"
+            else:          return "Long (>10 min)"
 
-    st.divider()
-    st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/13502/13502705.png" width="45">
-            <h4 style="margin:0;">Estimated Revenue per Video (INR)</h4>
-        </div>""", unsafe_allow_html=True)
-    revenue_df    = df.sort_values(by="estimated_revenue", ascending=False)
-    revenue_chart = alt.Chart(revenue_df).mark_bar(color="#cc0000").encode(
-        x=alt.X("title:N", sort="-y", title="Video Title"),
-        y=alt.Y("estimated_revenue:Q", title="Revenue (₹)"),
-        tooltip=[alt.Tooltip("title", title="Video"),
-                 alt.Tooltip("estimated_revenue", title="Revenue (₹)", format=",.2f")]
-    ).properties(height=400)
-    st.altair_chart(revenue_chart, use_container_width=True)
+        df["duration_category"] = df["duration"].apply(categorize_duration)
+        _dur_counts = df["duration_category"].value_counts().reset_index()
+        _dur_counts.columns = ["Category", "Count"]
+        
+        with d_col1:
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=_dur_counts["Category"], values=_dur_counts["Count"],
+                hole=0.5,
+                marker=dict(colors=["#fee2e2", "#fca5a5", "#ef4444"]))])
+            fig_pie.update_layout(title="Duration Distribution", height=400, template="plotly_dark")
+            st.plotly_chart(fig_pie, use_container_width=True)
+            
+        with d_col2:
+            df = df.sort_values("published_at").reset_index(drop=True)
+            df["duration_minutes"] = df["duration"].apply(lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
+            fig_dur = go.Figure(data=[
+                go.Bar(x=list(range(1, len(df)+1)), y=df["duration_minutes"], marker_color="#991b1b")
+            ])
+            fig_dur.update_layout(title="Duration by Upload Order", xaxis_title="Video Index", yaxis_title="Minutes", height=400, template="plotly_dark")
+            st.plotly_chart(fig_dur, use_container_width=True)
 
-    # ── Best Performing Video ─────────────────────────────────────────────────
-    st.divider()
-    st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/4302/4302106.png" width="45">
-            <h4 style="margin:0;">Best Performing Recent Video Analyzer</h4>
-        </div>""", unsafe_allow_html=True)
+        st.divider()
+        st.subheader("📜 Recent Video Analytics")
+        # Upgrade to st.data_editor
+        st.data_editor(
+            df.reset_index(drop=True),
+            column_config={
+                "title": "Video Title",
+                "published_at": "Published Date",
+                "view_count": st.column_config.NumberColumn("Views", format="%d 👀"),
+                "like_count": st.column_config.NumberColumn("Likes", format="%d 👍"),
+                "comment_count": st.column_config.NumberColumn("Comments", format="%d 💬"),
+                "total_engagement_rate": st.column_config.NumberColumn("Eng. Rate", format="%.2f %%"),
+                "engagement_per_1000": st.column_config.NumberColumn("Eng./1000", format="%.2f"),
+                "view_subscriber_ratio": st.column_config.NumberColumn("VSR", format="%.2f %%"),
+            },
+            hide_index=True,
+            use_container_width=True,
+            disabled=True # Acts as a viewer
+        )
 
-    df_bp = pd.DataFrame(video_analytics)
-    if not df_bp.empty:
-        df_bp["performance_score"] = (
-            df_bp["total_engagement_rate"] * 0.4 +
-            df_bp["engagement_per_1000"]   * 0.3 +
-            df_bp["view_subscriber_ratio"] * 0.3)
+    with tab3:
+        st.subheader("💰 Revenue Estimation (INR)")
+        
+        def estimate_revenue(views, cpm, rate=0.55):
+            return round(views * rate / 1000 * cpm, 2)
+
+        USD_TO_INR   = 90
+        cpm_low      = 3  * USD_TO_INR
+        cpm_high     = 10 * USD_TO_INR
+        avg_cpm      = (cpm_low + cpm_high) / 2
+
+        if not df.empty and "view_count" in df.columns:
+            total_views   = df["view_count"].sum()
+            _low_est      = estimate_revenue(total_views, cpm_low)
+            _high_est     = estimate_revenue(total_views, cpm_high)
+            _rpm          = avg_cpm * 0.55
+            df["estimated_revenue"] = df["view_count"].apply(lambda v: estimate_revenue(v, avg_cpm))
+
+            r_col1, r_col2, r_col3 = st.columns(3)
+            r_col1.metric("Revenue Estimate (Low)", f"₹ {_low_est:,.2f}")
+            r_col2.metric("Revenue Estimate (High)", f"₹ {_high_est:,.2f}")
+            r_col3.metric("RPM (Avg)", f"₹ {_rpm:,.2f}")
+            
+            fig_rev = go.Figure(data=[
+                go.Bar(x=df.sort_values("estimated_revenue", ascending=False)["title"], 
+                       y=df.sort_values("estimated_revenue", ascending=False)["estimated_revenue"], 
+                       marker_color="#ef4444")
+            ])
+            fig_rev.update_layout(title="Estimated Revenue per Video", xaxis_title="Video Title", yaxis_title="Revenue (₹)", height=450, template="plotly_dark")
+            st.plotly_chart(fig_rev, use_container_width=True)
+
+        st.divider()
+        st.subheader("📈 Subscriber Growth Prediction")
+        current_subs = int(channel_info["subscriber_count"])
+        _predicted_subs, _growth_rate = predict_subscriber_growth(df, current_subs)
+
+        g_col1, g_col2, g_col3 = st.columns(3)
+        g_col1.metric("Current", f"{current_subs:,}")
+        g_col2.metric("Predicted (30 Days)", f"{_predicted_subs:,}")
+        g_col3.metric("Growth Rate", f"{_growth_rate:.2f}%")
+        
+        fig_growth = go.Figure(data=[
+            go.Bar(x=["Current", "Predicted (30 Days)"], y=[current_subs, _predicted_subs], marker_color=["#fca5a5", "#ef4444"])
+        ])
+        fig_growth.update_layout(title="Growth Prediction", height=400, template="plotly_dark")
+        st.plotly_chart(fig_growth, use_container_width=True)
+
+    with tab4:
+        st.subheader("🧠 AI Insights & Strategy")
+        
+        # Calculate insights
+        avg_engagement_rate = df["total_engagement_rate"].mean()
+        avg_views_val       = df["view_count"].mean()
+        top_views_val       = df["view_count"].max()
+        
+        # Upload Frequency
+        try:
+            total_videos  = int(channel_info["video_count"])
+            published_dt  = datetime.strptime(channel_info["published_at"][:10], "%Y-%m-%d").date()
+            current_date  = datetime.now().date()
+            channel_age_months = max(1, (current_date.year - published_dt.year) * 12 + (current_date.month - published_dt.month))
+            _upload_freq = total_videos / channel_age_months
+        except: _upload_freq = 0
+
+        if avg_engagement_rate > 8: _insights.append("🔥 Excellent engagement rate. Audience is highly interactive.")
+        elif avg_engagement_rate > 4: _insights.append("📈 Good engagement. There is room for stronger CTAs.")
+        else: _insights.append("⚠️ Low engagement. Improve thumbnails, hooks, and call-to-actions.")
+
+        if _sub_watch_pct > 40: _insights.append("💪 Strong subscriber loyalty. Majority of subscribers actively watch.")
+        elif _sub_watch_pct > 20: _insights.append("🤝 Moderate subscriber watching pattern.")
+        else: _insights.append("❗ Many subscribers are inactive. Focus on retention strategies.")
+
+        if _upload_freq >= 8: _insights.append("🔥 Highly active creator. Algorithm favors this consistency.")
+        elif _upload_freq >= 4: _insights.append("📅 Good upload consistency.")
+        else: _insights.append("😴 Upload frequency is low. Increase consistency to grow faster.")
+
+        for insight in _insights:
+            st.info(insight)
+            
+        st.divider()
+        # Best Performing Video
+        df_bp = df.copy()
+        df_bp["performance_score"] = (df_bp["total_engagement_rate"] * 0.4 + df_bp["engagement_per_1000"] * 0.3 + df_bp["view_subscriber_ratio"] * 0.3)
         best_video = df_bp.loc[df_bp["performance_score"].idxmax()]
+        
         st.subheader("🥇 Best Performing Video")
-        bv1, bv2 = st.columns(2)
-        with bv1:
+        bv_col1, bv_col2 = st.columns([2, 1])
+        with bv_col1:
             st.markdown(f"""
-            **Title:** {best_video['title']}  
-            **Published At:** {best_video['published_at']}  
-            **Views:** {best_video['view_count']}  
-            **Likes:** {best_video['like_count']}  
-            **Comments:** {best_video['comment_count']}
-            """)
-        with bv2:
-            st.metric("Engagement Rate",       f"{best_video['total_engagement_rate']:.2f}%")
-            st.metric("Views / Subscriber Ratio", f"{best_video['view_subscriber_ratio']:.2f}")
-            st.metric("Performance Score",     f"{best_video['performance_score']:.2f}")
-
-    # ── Growth Prediction ─────────────────────────────────────────────────────
-    st.divider()
-    st.markdown("""
-    <div style="display:flex; align-items:center; gap:10px;">
-        <img src="https://cdn-icons-png.flaticon.com/128/2920/2920349.png" width="40">
-        <h4 style="margin:0;">Subscriber Growth Prediction (Next 30 Days)</h4>
-    </div>""", unsafe_allow_html=True)
-
-    current_subs           = int(channel_info["subscriber_count"])
-    _predicted_subs, _growth_rate = predict_subscriber_growth(df, current_subs)
-
-    gc1, gc2, gc3 = st.columns(3)
-    gc1.metric("Current Subscribers", f"{current_subs:,}")
-    gc2.metric("Predicted (30 Days)", f"{_predicted_subs:,}")
-    gc3.metric("Growth Rate",         f"{_growth_rate:.2f}%")
-
-    growth_chart = alt.Chart(pd.DataFrame({
-        "Stage":       ["Current", "Predicted (30 Days)"],
-        "Subscribers": [current_subs, _predicted_subs]
-    })).mark_bar(color="#cc0000").encode(x="Stage", y="Subscribers")
-    st.altair_chart(growth_chart, use_container_width=True)
-
-    # ── AI Insights ───────────────────────────────────────────────────────────
-    st.divider()
-    st.markdown("""
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="https://cdn-icons-png.flaticon.com/128/16835/16835765.png" width="45">
-            <h4 style="margin:0;">Channel Insights & Strategy Suggestions</h4>
-        </div>""", unsafe_allow_html=True)
-
-    avg_engagement_rate = df["total_engagement_rate"].mean()
-    avg_views_val       = df["view_count"].mean()
-    top_views_val       = df["view_count"].max()
-
-    if avg_engagement_rate > 8:
-        _insights.append("🔥 Excellent engagement rate. Audience is highly interactive.")
-    elif avg_engagement_rate > 4:
-        _insights.append("📈 Good engagement. There is room for stronger CTAs.")
-    else:
-        _insights.append("⚠️ Low engagement. Improve thumbnails, hooks, and call-to-actions.")
-
-    if _sub_watch_pct > 40:
-        _insights.append("💪 Strong subscriber loyalty. Majority of subscribers actively watch.")
-    elif _sub_watch_pct > 20:
-        _insights.append("🤝 Moderate subscriber watching pattern.")
-    else:
-        _insights.append("❗ Many subscribers are inactive. Focus on retention strategies.")
-
-    if _upload_freq >= 8:
-        _insights.append("🔥 Highly active creator. Algorithm favors this consistency.")
-    elif _upload_freq >= 4:
-        _insights.append("📅 Good upload consistency.")
-    else:
-        _insights.append("😴 Upload frequency is low. Increase consistency to grow faster.")
-
-    if not _dur_counts.empty:
-        most_common = _dur_counts.iloc[0]["Category"]
-        if most_common == "Short (<2 min)":
-            _insights.append("📱 Channel focuses on short-form content. Shorts strategy detected.")
-        elif most_common == "Medium (1–10 min)":
-            _insights.append("🎬 Balanced content length. Optimized for regular YouTube videos.")
-        else:
-            _insights.append("🎥 Long-form content dominant. Great for deep audience retention.")
-
-    if top_views_val > avg_views_val * 1.8:
-        _insights.append("🚀 One video significantly outperformed others. Analyze and replicate its format.")
-
-    if _growth_rate > 4:
-        st.success("🚀 Channel is experiencing strong growth momentum.")
-    elif _growth_rate > 1:
-        st.info("📈 Channel is showing steady growth.")
-    else:
-        st.warning("⚠️ Growth is currently slow.")
-
-    for insight in _insights:
-        st.success(insight)
-
-    # ── Video Analytics Table ─────────────────────────────────────────────────
-    st.divider()
-    st.subheader("📊 Recent Video Analytics")
-    df_display = df.reset_index(drop=True)
-    df_display.insert(0, "S.No", df_display.index + 1)
-    st.dataframe(
-        df_display,
-        column_config={
-            "S.No":                  st.column_config.NumberColumn("S.No", width="small"),
-            "title":                 "Video Title",
-            "published_at":          "Published Date",
-            "view_count":            st.column_config.NumberColumn("Views",    format="%d 👀"),
-            "like_count":            st.column_config.NumberColumn("Likes",    format="%d 👍"),
-            "comment_count":         st.column_config.NumberColumn("Comments", format="%d 💬"),
-            "like_ratio":            st.column_config.NumberColumn("Like Ratio",    format="%.2f %%"),
-            "comment_ratio":         st.column_config.NumberColumn("Comment Ratio", format="%.2f %%"),
-            "total_engagement_rate": st.column_config.NumberColumn("Engagement Rate", format="%.2f %%"),
-            "view_subscriber_ratio": st.column_config.NumberColumn("View/Sub Ratio",  format="%.2f %%"),
-            "engagement_per_1000":   st.column_config.NumberColumn("Engagement / 1000", format="%.2f"),
-            "like_comment_ratio":    st.column_config.NumberColumn("Like-Comment Ratio", format="%.2f"),
-        },
-        hide_index=True,
-        use_container_width=True
-    )
+            <div style="background-color: #1f2937; padding: 20px; border-radius: 10px;">
+                <h4>{best_video['title']}</h4>
+                <p><b>Views:</b> {best_video['view_count']:,} | <b>Likes:</b> {best_video['like_count']:,}</p>
+                <p><b>Published:</b> {best_video['published_at']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with bv_col2:
+            st.metric("Performance Score", f"{best_video['performance_score']:.2f}")
+            st.metric("Engagement Rate", f"{best_video['total_engagement_rate']:.2f}%")
 
     # ── PDF Download Button ───────────────────────────────────────────────────
     st.divider()
-    st.markdown("""
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-        <img src="https://cdn-icons-png.flaticon.com/128/337/337946.png" width="35">
-        <h4 style="margin:0;">Download Full Analytics Report</h4>
-    </div>""", unsafe_allow_html=True)
-
-    with st.spinner("Preparing PDF report with all charts and visualizations…"):
-        pdf_bytes = generate_pdf_report(
-            channel_info     = channel_info,
-            video_analytics  = video_analytics,
-            df               = df,
-            predicted_subs   = _predicted_subs,
-            growth_rate      = _growth_rate,
-            upload_frequency = _upload_freq,
-            duration_counts  = _dur_counts,
-            subscriber_watch_percent = _sub_watch_pct,
-            avg_engagement   = _avg_engagement,
-            low_estimate     = _low_est,
-            high_estimate    = _high_est,
-            rpm              = _rpm,
-            insights         = _insights
-        )
-
-    channel_slug = channel_name.replace(" ", "_")
-    filename     = f"InsightTube_{channel_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
-
-    st.download_button(
-        label           = "📥  Download Professional PDF Report",
-        data            = pdf_bytes,
-        file_name       = filename,
-        mime            = "application/pdf",
-        use_container_width = True,
-        type            = "primary"
-    )
+    with st.expander("📥 Download Report"):
+        with st.spinner("Preparing PDF report…"):
+            pdf_bytes = generate_pdf_report(
+                channel_info=channel_info, video_analytics=video_analytics, df=df,
+                predicted_subs=_predicted_subs, growth_rate=_growth_rate,
+                upload_frequency=_upload_freq, duration_counts=_dur_counts,
+                subscriber_watch_percent=_sub_watch_pct, avg_engagement=_avg_engagement,
+                low_estimate=_low_est, high_estimate=_high_est, rpm=_rpm, insights=_insights
+            )
+        st.download_button(label="Download Professional PDF Report", data=pdf_bytes, 
+                           file_name=f"InsightTube_{channel_name.replace(' ', '_')}.pdf", 
+                           mime="application/pdf", use_container_width=True, type="primary")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
