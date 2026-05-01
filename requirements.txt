@@ -12,3 +12,5 @@ scikit-learn
 numpy
 reportlab
 groq
+wordcloud
+groq
