@@ -2,7 +2,11 @@ import requests
 import re
 import streamlit as st
 
-API_KEY = st.secrets["YOUTUBE_API_KEY"]
+try:
+    API_KEY = st.secrets["YOUTUBE_API_KEY"]
+except:
+    import os
+    API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 def extract_video_id(url):
     patterns = [

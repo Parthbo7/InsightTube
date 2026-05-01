@@ -3,7 +3,11 @@ import streamlit as st
 import requests
 import re
 
-API_KEY = st.secrets["YOUTUBE_API_KEY"]
+try:
+    API_KEY = st.secrets["YOUTUBE_API_KEY"]
+except:
+    import os
+    API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
 def get_channel_id_from_url(channel_url):

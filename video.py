@@ -2,7 +2,11 @@ import streamlit as st
 
 from googleapiclient.discovery import build
 
-API_KEY = st.secrets["YOUTUBE_API_KEY"]
+try:
+    API_KEY = st.secrets["YOUTUBE_API_KEY"]
+except:
+    import os
+    API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 youtube = build("youtube", "v3", developerKey=API_KEY)
 

@@ -77,7 +77,11 @@ def get_channel_icons(channel_ids):
 # YOUTUBE API SETUP
 # -------------------------
 
-API_KEY = st.secrets["YOUTUBE_API_KEY"]
+try:
+    API_KEY = st.secrets["YOUTUBE_API_KEY"]
+except:
+    import os
+    API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 youtube = build(
     "youtube",

@@ -13,4 +13,4 @@ __pycache__/
 
 # OS files
 .DS_Store
-Thumbs.dbgit rm --cached .env
+Thumbs.db
