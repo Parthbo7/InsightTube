@@ -64,4 +64,4 @@ def update_channel_avg_engagement(supabase, channel_id):
         .eq("channel_id", channel_id) \
         .execute()
 
-    print("✅ Channel average engagement updated.")
+    print("Channel average engagement updated.")

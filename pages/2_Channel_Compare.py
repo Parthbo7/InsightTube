@@ -24,6 +24,21 @@ st.markdown("""
 [data-testid="stSidebar"] { background-color: #111827; }
 .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; }
 
+/* ── Hero ── */
+.hero-header {
+    font-size: 3rem !important;
+    font-weight: 800;
+    margin-bottom: 5px;
+    background: linear-gradient(135deg, #F8FAFC 0%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.hero-subtitle {
+    color: #94A3B8;
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+}
+
 /* ── Metric Label and Value Styles ── */
 [data-testid="metric-container"] label {
     font-size: 0.95rem !important;
@@ -127,6 +142,9 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+
+from components import apply_tab_styling
+apply_tab_styling()
  
 # ── Hide default sidebar nav ──────────────────────────────────────────────────
 st.markdown("""
@@ -149,6 +167,9 @@ with st.sidebar:
     col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
     col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
     col1, col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
+    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
     col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
     col1, col2 = st.columns([1, 8])
@@ -157,16 +178,15 @@ with st.sidebar:
     col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
     col2.page_link("pages/3_About_Us.py", label="About Us")
-    col1, col2 = st.columns([1, 8])
-    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
-    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 # ── Page Header ───────────────────────────────────────────────────────────────
-st.divider()
-hc1, hc2 = st.columns([1, 10])
-hc1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=80)
-hc2.title("Channel Comparison")
-st.divider()
+st.markdown("""
+<div style="text-align: center; margin-top: 20px; animation: fadeIn 0.8s ease-out;">
+    <img src="https://cdn-icons-png.flaticon.com/128/934/934478.png" width="80" style="margin-bottom: 10px;">
+    <h1 class="hero-header">Channel Comparison</h1>
+    <p class="hero-subtitle">Compare two YouTube channels side-by-side and uncover performance insights</p>
+</div>
+""", unsafe_allow_html=True)
  
  
 # ═════════════════════════════════════════════════════════════════════════════
@@ -371,11 +391,34 @@ def render_channel_column(info, stats, df, col_id):
     st.divider()
     section_header(
         "https://cdn-icons-png.flaticon.com/128/2088/2088617.png",
-        "Views per Video"
+        "Top 15 Most Viewed Videos"
     )
-    fig_views = px.bar(df.sort_values("view_count", ascending=False), 
-                       x="title", y="view_count", color_discrete_sequence=["#CC0000"])
-    fig_views.update_layout(height=400, template="plotly_dark", xaxis_title=None)
+    import plotly.express as px
+    df_views = df.sort_values(by="view_count", ascending=False).head(15).copy()
+    df_views["short_title"] = df_views["title"].apply(lambda x: x[:40] + "..." if len(x) > 40 else x)
+    df_views = df_views.iloc[::-1]
+
+    fig_views = px.bar(
+        df_views, 
+        x="view_count", 
+        y="short_title", 
+        orientation="h",
+        hover_data={"title": True, "short_title": False, "view_count": ":,"},
+        color="view_count", 
+        color_continuous_scale=px.colors.sequential.Reds,
+        text_auto=".2s"
+    )
+    fig_views.update_traces(textposition="outside", cliponaxis=False)
+    fig_views.update_layout(
+        height=500, 
+        template="plotly_dark", 
+        xaxis_title="Total Views",
+        yaxis_title="",
+        coloraxis_showscale=False,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=40, t=10, b=10)
+    )
     st.plotly_chart(fig_views, use_container_width=True, key=f"views_{col_id}")
  
     # ── Likes & Comments ─────────────────────────────────────────────────────
@@ -736,19 +779,36 @@ def render_winner(info1, stats1, info2, stats2, winner_wins, loser_wins):
 #  INPUT SECTION
 # ═════════════════════════════════════════════════════════════════════════════
  
-col1, col2 = st.columns(2, gap="large")
-with col1:
-    channel_1_input = st.text_input(
-        "🔴 Enter First Channel Name or URL",
-        placeholder="e.g. MrBeast or youtube.com/@MrBeast"
-    )
-with col2:
-    channel_2_input = st.text_input(
-        "🟣 Enter Second Channel Name or URL",
-        placeholder="e.g. PewDiePie or youtube.com/@PewDiePie"
-    )
- 
-compare_btn = st.button("⚡ Compare Channels", use_container_width=True, type="primary")
+col_in1, col_in2, col_in3 = st.columns([1, 6, 1])
+with col_in2:
+    col1, col2 = st.columns(2, gap="medium")
+    with col1:
+        channel_1_input = st.text_input(
+            "🔴 Enter First Channel Name or URL",
+            placeholder="e.g. MrBeast or youtube.com/@MrBeast"
+        )
+    with col2:
+        channel_2_input = st.text_input(
+            "🟣 Enter Second Channel Name or URL",
+            placeholder="e.g. PewDiePie or youtube.com/@PewDiePie"
+        )
+    
+    st.markdown("""
+    <p style="color: #64748B; font-size: 0.9rem; margin-top: -10px; margin-bottom: 20px; text-align: center;">
+        <i>Suggestions: Try "MrBeast" vs "T-Series"</i>
+    </p>
+    """, unsafe_allow_html=True)
+    
+    compare_btn = st.button("⚡ Compare Channels", use_container_width=True, type="primary")
+
+if not channel_1_input and not channel_2_input and "info1" not in st.session_state:
+    st.markdown("""
+    <div style="text-align: center; margin-top: 60px; padding: 40px; border: 2px dashed #334155; border-radius: 20px; opacity: 0.6; animation: fadeIn 1s ease-out;">
+        <img src="https://cdn-icons-png.flaticon.com/128/934/934478.png" width="60" style="filter: grayscale(100%); opacity: 0.5;">
+        <h3 style="color: #64748B; margin-top: 15px;">Enter two channels to compare insights</h3>
+        <p style="color: #475569;">Detailed performance comparison will appear here once you run the analysis.</p>
+    </div>
+    """, unsafe_allow_html=True)
  
 # ── VS badge preview ──────────────────────────────────────────────────────
 if channel_1_input and channel_2_input and not compare_btn:

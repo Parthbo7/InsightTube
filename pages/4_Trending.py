@@ -23,6 +23,9 @@ with st.sidebar:
     col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
     col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
     col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
+    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
+    col1,col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
     col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
     col1,col2 = st.columns([1, 8])
@@ -31,9 +34,6 @@ with st.sidebar:
     col1,col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
     col2.page_link("pages/3_About_Us.py", label=" About Us")
-    col1,col2 = st.columns([1, 8])
-    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
-    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 st.set_page_config(
     page_title="InsightTube",
@@ -49,19 +49,46 @@ hide_default_sidebar = """
 st.markdown(hide_default_sidebar, unsafe_allow_html=True)   
 st.markdown("""
 <style>
-.block-container {
-    padding-top: 2rem;
+.block-container { padding-top: 2rem; }
+[data-testid="stSidebar"] { background-color: #111827; }
+.stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; }
+
+/* ── Hero ── */
+.hero-header {
+    font-size: 3rem !important;
+    font-weight: 800;
+    margin-bottom: 5px;
+    background: linear-gradient(135deg, #F8FAFC 0%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
-[data-testid="stSidebar"] {
-    background-color: #111827;
+.hero-subtitle {
+    color: #94A3B8;
+    font-size: 1.1rem;
+    margin-bottom: 25px;
 }
-.stMetric {
-    background-color: #1f2937;
+
+/* ── Video Card ── */
+.video-card {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
     padding: 15px;
-    border-radius: 10px;
+    transition: all 0.3s ease;
+    margin-bottom: 15px;
+    height: 100%;
+}
+.video-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
 }
 </style>
 """, unsafe_allow_html=True)
+
+from components import apply_tab_styling
+apply_tab_styling()
 
 def get_channel_icons(channel_ids):
 
@@ -115,23 +142,44 @@ categories = {
     "Science & Technology": "28",
     
 }
-st.divider()
-col1,col2 = st.columns([1,10])
-col1.image("https://cdn-icons-png.flaticon.com/128/9227/9227001.png", width=80)
-col2.title("Trending Videos")
-st.divider()
+# ── Page Header ───────────────────────────────────────────────────────────────
+st.markdown("""
+<div style="text-align: center; margin-top: 20px; animation: fadeIn 0.8s ease-out;">
+    <img src="https://cdn-icons-png.flaticon.com/128/9227/9227001.png" width="80" style="margin-bottom: 10px;">
+    <h1 class="hero-header">Trending Videos</h1>
+    <p class="hero-subtitle">Discover what's trending across YouTube categories in real-time</p>
+</div>
+""", unsafe_allow_html=True)
 
 
 # -------------------------
-# CATEGORY SELECT
+# INPUT SECTION
 # -------------------------
 
-category_name = st.selectbox(
-    "Select Category",
-    list(categories.keys())
-)
+col_in1, col_in2, col_in3 = st.columns([1, 6, 1])
+with col_in2:
+    category_name = st.selectbox(
+        "📂 Select Category",
+        list(categories.keys())
+    )
+    category_id = categories[category_name]
+    
+    st.markdown("""
+    <p style="color: #64748B; font-size: 0.9rem; margin-top: -10px; margin-bottom: 20px; text-align: center;">
+        <i>Trending: Music, Gaming, News</i>
+    </p>
+    """, unsafe_allow_html=True)
+    
+    analyze_btn = st.button("🚀 Analyze Trends", use_container_width=True, type="primary")
 
-category_id = categories[category_name]
+if not analyze_btn:
+    st.markdown("""
+    <div style="text-align: center; margin-top: 60px; padding: 40px; border: 2px dashed #334155; border-radius: 20px; opacity: 0.6; animation: fadeIn 1s ease-out;">
+        <img src="https://cdn-icons-png.flaticon.com/128/9227/9227001.png" width="60" style="filter: grayscale(100%); opacity: 0.5;">
+        <h3 style="color: #64748B; margin-top: 15px;">Select a category to explore trending videos</h3>
+        <p style="color: #475569;">Real-time YouTube analytics and top charts will appear here.</p>
+    </div>
+    """, unsafe_allow_html=True)
 def get_channel_icon(channel_id):
 
     request = youtube.channels().list(
@@ -201,7 +249,7 @@ def get_trending_videos(category_id=None):
 # -------------------------
 # RUN ANALYSIS
 # -------------------------
-if st.button("Analyze Trends", use_container_width=True, type="primary"):
+if analyze_btn:
 
     lottie_trend = load_lottieurl("https://lottie.host/149f706a-a289-48c0-8f69-7b3b3558c736/U6Y6Y6p1p.json")
     
@@ -226,18 +274,24 @@ if st.button("Analyze Trends", use_container_width=True, type="primary"):
             for col, (_, row) in zip(cols, df.iloc[i:i+cols_per_row].iterrows()):
                 with col:
                     channel_icon = get_channel_icon(row["channel_id"])
-                    st.image(row["thumbnail"], use_container_width=True)
-                    st.markdown(f"**{row['title'][:50]}...**" if len(row['title']) > 50 else f"**{row['title']}**")
-                    icon_col, name_col = st.columns([1,4])
-                    with icon_col:
-                        st.image(channel_icon, width=30)
-                    with name_col:
-                        st.write(row["channel"])
-                    
-                    st.caption(f"👁 {row['views']:,} views | 👍 {row['likes']:,} likes")
                     video_url = f"https://www.youtube.com/watch?v={row['video_id']}"
-                    st.link_button("▶ Watch", video_url, use_container_width=True)
-                    st.divider()
+                    title_trunc = row['title'][:50] + "..." if len(row['title']) > 50 else row['title']
+                    st.markdown(f"""
+                    <a href="{video_url}" target="_blank" style="text-decoration: none; color: inherit;">
+                        <div class="video-card">
+                            <img src="{row['thumbnail']}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">
+                            <div style="font-weight: 600; font-size: 1rem; margin-bottom: 8px; color: #f1f5f9; line-height: 1.3;">{title_trunc}</div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <img src="{channel_icon}" style="width: 24px; height: 24px; border-radius: 50%;">
+                                <span style="font-size: 0.9rem; color: #94a3b8;">{row['channel']}</span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #64748b; display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                                <span>👁 {row['views']:,} views</span>
+                                <span>👍 {row['likes']:,} likes</span>
+                            </div>
+                        </div>
+                    </a>
+                    """, unsafe_allow_html=True)
 
     with tab2:
         st.subheader("🏆 Leading Channels in this Category")

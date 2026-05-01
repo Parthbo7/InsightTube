@@ -9,6 +9,22 @@ from videodata import fetch_video_analytics
 from comments import fetch_top_comments
 from sentiment import analyze_with_groq
 
+# ── Caching API calls ────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False, ttl=3600)
+def cached_get_videos(channel):
+    return get_10_recent_videos(channel)
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def cached_get_analytics(links):
+    return fetch_video_analytics(links)
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def cached_get_comments(vid_id, max_results=100):
+    return fetch_top_comments(vid_id, max_results)
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def cached_analyze(comments, title, api_key):
+    return analyze_with_groq(comments, title, api_key)
 
 def _clean_display(text, max_chars=300):
     """Strip HTML tags and truncate for safe rendering inside HTML cards."""
@@ -28,13 +44,40 @@ st.markdown("""
 [data-testid="stSidebar"] { background-color: #111827; }
 .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; }
 
-.sentiment-card {
-    padding: 14px 16px;
-    border-radius: 10px;
+/* ── Hero ── */
+.hero-header {
+    font-size: 3rem !important;
+    font-weight: 800;
+    margin-bottom: 5px;
+    background: linear-gradient(135deg, #F8FAFC 0%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.hero-subtitle {
+    color: #94A3B8;
+    font-size: 1.1rem;
     margin-bottom: 10px;
-    font-size: 0.88rem;
+}
+.ai-badge {
+    background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 25px;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+}
+
+.sentiment-card {
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
     line-height: 1.5;
     word-break: break-word;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 .s-positive { background: rgba(16,185,129,0.12); border-left: 4px solid #10b981; }
 .s-negative { background: rgba(239,68,68,0.12);  border-left: 4px solid #ef4444; }
@@ -42,26 +85,38 @@ st.markdown("""
 
 .theme-tag {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
     background: #374151;
     color: #e5e7eb;
-    font-size: 0.8rem;
-    margin: 4px 4px 4px 0;
+    font-size: 0.85rem;
+    margin: 4px 6px 4px 0;
+    border: 1px solid #4b5563;
 }
 
 .verdict-box {
-    padding: 20px 24px;
+    padding: 24px;
     border-radius: 12px;
     text-align: center;
-    font-size: 1.15rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 .v-positive { background: rgba(16,185,129,0.18); border: 1px solid #10b981; color: #10b981; }
 .v-negative { background: rgba(239,68,68,0.18);  border: 1px solid #ef4444; color: #ef4444; }
 .v-neutral  { background: rgba(107,114,128,0.18); border: 1px solid #6b7280; color: #9ca3af; }
 .v-mixed    { background: rgba(251,191,36,0.18);  border: 1px solid #fbbf24; color: #fbbf24; }
+
+.scrollable-comments {
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+.scrollable-comments::-webkit-scrollbar { width: 6px; }
+.scrollable-comments::-webkit-scrollbar-track { background: #1f2937; border-radius: 4px; }
+.scrollable-comments::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+.scrollable-comments::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -82,6 +137,9 @@ with st.sidebar:
     col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
     col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
     col1, col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
+    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
     col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
     col1, col2 = st.columns([1, 8])
@@ -90,44 +148,64 @@ with st.sidebar:
     col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
     col2.page_link("pages/3_About_Us.py", label="About Us")
-    col1, col2 = st.columns([1, 8])
-    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
-    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 # ── Header ────────────────────────────────────────────────────────────────────
-st.divider()
-col1, col2 = st.columns([1, 10])
-col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=80)
-col2.title("Comment Sentiment Analysis")
-st.caption("Understand what your audience truly feels — powered by Llama 3.1 8B (Groq)")
-st.divider()
+st.markdown("""
+<div style="text-align: center; margin-top: 20px; animation: fadeIn 0.8s ease-out;">
+    <img src="https://cdn-icons-png.flaticon.com/128/2593/2593453.png" width="80" style="margin-bottom: 10px;">
+    <h1 class="hero-header">Comment Sentiment Analysis</h1>
+    <p class="hero-subtitle">Understand what your audience really thinks using AI-powered sentiment analysis</p>
+    <div class="ai-badge">✨ Powered by Llama 3.1 8B (Groq)</div>
+</div>
+""", unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────────────────────
-for key in ["videos_data", "last_channel", "sentiment_results", "analyzed_comments", "analyzed_video"]:
+for key in ["videos_data", "last_channel", "sentiment_results", "analyzed_comments", "analyzed_video", "is_analyzing", "analyze_clicked"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
 # ── Step 1 — Channel input ────────────────────────────────────────────────────
-channel_input = st.text_input("Enter YouTube Channel Name or URL")
+col1, col2, col3 = st.columns([1, 6, 1])
+with col2:
+    channel_input = st.text_input("🔍 Enter YouTube Channel Name or URL", placeholder="e.g., 'MrBeast' or UCX6OQ3DkcsbYNE6H8uQQuVA")
+    
+    st.markdown("""
+    <p style="color: #64748B; font-size: 0.9rem; margin-top: -10px; margin-bottom: 20px; text-align: center;">
+        <i>Suggestions: Netflix, MrBeast, CarryMinati</i>
+    </p>
+    """, unsafe_allow_html=True)
+    
+    fetch_btn = st.button("🚀 Fetch Recent Videos", use_container_width=True, type="primary")
 
-if channel_input and channel_input != st.session_state.last_channel:
-    with st.spinner("Fetching recent videos…"):
-        try:
-            links = get_10_recent_videos(channel_input)
-            if not links:
-                st.error("Channel not found or has no public videos.")
-            else:
-                video_data = fetch_video_analytics(links)
-                if not video_data:
-                    st.error("Could not retrieve video details.")
+if not channel_input and not st.session_state.videos_data:
+    st.markdown("""
+    <div style="text-align: center; margin-top: 60px; padding: 40px; border: 2px dashed #334155; border-radius: 20px; opacity: 0.6; animation: fadeIn 1s ease-out;">
+        <img src="https://cdn-icons-png.flaticon.com/128/404/404672.png" width="60" style="filter: grayscale(100%); opacity: 0.5;">
+        <h3 style="color: #64748B; margin-top: 15px;">Your sentiment insights will appear here</h3>
+        <p style="color: #475569;">Enter a channel name or URL above to load videos and analyze comments.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+if fetch_btn or (channel_input and channel_input != st.session_state.last_channel):
+    if channel_input:
+        with st.spinner("Fetching recent videos…"):
+            try:
+                links = cached_get_videos(channel_input)
+                if not links:
+                    st.error("Channel not found or has no public videos.")
                 else:
-                    st.session_state.videos_data = video_data
-                    st.session_state.last_channel = channel_input
-                    st.session_state.sentiment_results = None
-                    st.session_state.analyzed_comments = None
-                    st.session_state.analyzed_video = None
-        except Exception as e:
-            st.error(f"Error fetching channel: {e}")
+                    video_data = cached_get_analytics(links)
+                    if not video_data:
+                        st.error("Could not retrieve video details.")
+                    else:
+                        st.session_state.videos_data = video_data
+                        st.session_state.last_channel = channel_input
+                        st.session_state.sentiment_results = None
+                        st.session_state.analyzed_comments = None
+                        st.session_state.analyzed_video = None
+                        st.session_state.is_analyzing = False
+            except Exception as e:
+                st.error(f"Error fetching channel: {e}")
 
 # ── Step 2 — Video selection ──────────────────────────────────────────────────
 if st.session_state.videos_data:
@@ -151,34 +229,50 @@ if st.session_state.videos_data:
 
     # ── Step 3 — Trigger ─────────────────────────────────────────────────────
     st.markdown("---")
-    run_clicked = st.button("Run Analysis", type="primary", use_container_width=True)
+    
+    def trigger_analysis():
+        st.session_state.is_analyzing = True
+        st.session_state.sentiment_results = None
 
-    if run_clicked:
-        with st.spinner("Fetching up to 100 comments…"):
-            comments, fetch_err = fetch_top_comments(vid_id, max_results=100)
+    if st.button("Run Analysis", type="primary", use_container_width=True, on_click=trigger_analysis, disabled=st.session_state.is_analyzing):
+        pass
+
+    if st.session_state.is_analyzing:
+        # Check API key gracefully
+        try:
+            groq_key = st.secrets.get("GROQ_API_KEY")
+            if not groq_key:
+                raise KeyError
+        except (KeyError, FileNotFoundError):
+            st.error(
+                "**GROQ_API_KEY** not found in `.streamlit/secrets.toml`.\n\n"
+                "Please add it to use the AI sentiment analysis feature."
+            )
+            st.session_state.is_analyzing = False
+            st.stop()
+            
+        with st.spinner("Fetching top comments from YouTube..."):
+            comments, fetch_err = cached_get_comments(vid_id, max_results=100)
 
         if fetch_err:
             st.error(f"Could not fetch comments: {fetch_err}")
+            st.session_state.is_analyzing = False
         elif not comments:
             st.warning("No comments were returned for this video.")
+            st.session_state.is_analyzing = False
         else:
-            with st.spinner("Analyzing with Llama 3.1 8B (Groq) — this takes a few seconds…"):
-                try:
-                    groq_key = st.secrets["GROQ_API_KEY"]
-                except KeyError:
-                    st.error(
-                        "**GROQ_API_KEY** not found in `.streamlit/secrets.toml`.\n\n"
-                        "Add it to use sentiment analysis."
-                    )
-                    st.stop()
-                results, err = analyze_with_groq(comments, chosen["title"], groq_key)
+            with st.spinner("Analyzing sentiments with Llama 3.1 8B (Groq) — this takes a few seconds…"):
+                results, err = cached_analyze(comments, chosen["title"], groq_key)
 
             if err:
                 st.error(f"Analysis failed: {err}")
+                st.session_state.is_analyzing = False
             else:
                 st.session_state.sentiment_results = results
                 st.session_state.analyzed_comments = comments
                 st.session_state.analyzed_video = chosen
+                st.session_state.is_analyzing = False
+                st.rerun()
 
 # ── Step 4 — Results ─────────────────────────────────────────────────────────
 if st.session_state.sentiment_results:
@@ -199,7 +293,7 @@ if st.session_state.sentiment_results:
     }
     verdict_text, verdict_cls = VERDICTS.get(overall, ("Mixed reaction", "v-mixed"))
     st.markdown(
-        f'<div class="verdict-box {verdict_cls}">{verdict_text}</div>',
+        f'<div class="verdict-box {verdict_cls}">Verdict: {verdict_text}</div>',
         unsafe_allow_html=True,
     )
 
@@ -213,39 +307,47 @@ if st.session_state.sentiment_results:
     st.markdown("---")
 
     # Donut chart + Summary
-    col_chart, col_summary = st.columns([1, 1])
+    col_chart, col_summary = st.columns([1.2, 1])
 
     with col_chart:
+        labels = ["Positive", "Negative", "Neutral"]
+        values = [counts["positive"], counts["negative"], counts["neutral"]]
+        colors = ["#10b981", "#ef4444", "#6b7280"]
+        
         fig = go.Figure(data=[go.Pie(
-            labels=["Positive", "Negative", "Neutral"],
-            values=[counts["positive"], counts["negative"], counts["neutral"]],
+            labels=labels,
+            values=values,
             hole=0.55,
-            marker=dict(colors=["#10b981", "#ef4444", "#6b7280"]),
+            marker=dict(colors=colors, line=dict(color='#111827', width=2)),
             textinfo="label+percent",
+            textfont=dict(size=14, color="white"),
             hovertemplate="%{label}: %{value} comments<extra></extra>",
+            pull=[0.05 if v == max(values) else 0 for v in values] # Pull out the largest slice slightly
         )])
         fig.update_layout(
             showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5),
             paper_bgcolor="#111827",
             plot_bgcolor="#111827",
             font=dict(color="white"),
-            margin=dict(t=30, b=30),
+            margin=dict(t=20, b=40, l=20, r=20),
             annotations=[dict(
                 text=overall.upper(),
                 x=0.5, y=0.5,
-                font_size=13, font_color="white",
+                font_size=16, font_color="white",
                 showarrow=False,
             )],
         )
         st.plotly_chart(fig, use_container_width=True)
 
     with col_summary:
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
         if r.get("summary"):
-            st.markdown("**What the audience is saying:**")
-            st.info(r["summary"])
+            st.markdown("### 🗣️ What the audience is saying:")
+            st.info(r["summary"], icon="ℹ️")
 
         if r.get("key_themes"):
-            st.markdown("**Key Themes:**")
+            st.markdown("### 🏷️ Key Themes:")
             tags = "".join(f'<span class="theme-tag">{t}</span>' for t in r["key_themes"])
             st.markdown(tags, unsafe_allow_html=True)
 
@@ -268,18 +370,20 @@ if st.session_state.sentiment_results:
         stopwords = STOPWORDS | {
             "video", "channel", "youtube", "like", "comment",
             "subscribe", "please", "one", "will", "get", "watch",
+            "videos", "good", "great", "awesome", "love", "really"
         }
         wc = WordCloud(
             width=1200,
-            height=400,
+            height=500,
             background_color="#111827",
-            colormap="RdYlGn",
+            colormap="Set2",
             stopwords=stopwords,
-            max_words=80,
-            prefer_horizontal=0.8,
+            max_words=100,
+            prefer_horizontal=0.85,
+            border_color="#1f2937",
         ).generate(raw_corpus)
 
-        fig_wc, ax = plt.subplots(figsize=(14, 5))
+        fig_wc, ax = plt.subplots(figsize=(14, 6))
         fig_wc.patch.set_facecolor("#111827")
         ax.set_facecolor("#111827")
         ax.imshow(wc, interpolation="bilinear")
@@ -287,9 +391,9 @@ if st.session_state.sentiment_results:
         plt.tight_layout(pad=0)
 
         buf = io.BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight", facecolor="#111827")
+        plt.savefig(buf, format="png", bbox_inches="tight", facecolor="#111827", dpi=150)
         buf.seek(0)
-        st.image(buf, use_container_width=True)
+        st.image(buf, use_container_width=True, caption="Most frequently used words in comments")
         plt.close(fig_wc)
 
     except ImportError:
@@ -299,38 +403,43 @@ if st.session_state.sentiment_results:
 
     # Top positive / negative comments
     st.markdown("---")
-    col_pos, col_neg = st.columns(2)
+    col_pos, col_neg = st.columns(2, gap="large")
 
     with col_pos:
-        st.markdown("### Top Positive Comments")
-        top_pos = r["positive"][:5]
+        st.markdown("### 🟢 Top Positive Comments")
+        top_pos = r.get("positive", [])[:15]
         if top_pos:
+            st.markdown('<div class="scrollable-comments">', unsafe_allow_html=True)
             for entry in top_pos:
                 text = _clean_display(entry["text"])
                 st.markdown(
                     f'<div class="sentiment-card s-positive">{text}</div>',
                     unsafe_allow_html=True,
                 )
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("No strongly positive comments found.")
 
     with col_neg:
-        st.markdown("### Top Negative Comments")
-        top_neg = r["negative"][:5]
+        st.markdown("### 🔴 Top Negative Comments")
+        top_neg = r.get("negative", [])[:15]
         if top_neg:
+            st.markdown('<div class="scrollable-comments">', unsafe_allow_html=True)
             for entry in top_neg:
                 text = _clean_display(entry["text"])
                 st.markdown(
                     f'<div class="sentiment-card s-negative">{text}</div>',
                     unsafe_allow_html=True,
                 )
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.success("No significantly negative comments found.")
 
     # Full comment table
-    with st.expander(f"See all {total} analyzed comments"):
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.expander(f"See all {total} analyzed comments", expanded=False):
         rows = []
-        for label, bucket in [("Positive", r["positive"]), ("Negative", r["negative"]), ("Neutral", r["neutral"])]:
+        for label, bucket in [("Positive", r.get("positive", [])), ("Negative", r.get("negative", [])), ("Neutral", r.get("neutral", []))]:
             for entry in bucket:
                 rows.append({
                     "Sentiment": label,
@@ -345,7 +454,7 @@ st.markdown("""
 .footer {
     position: fixed; left: 0; bottom: 0; width: 100%;
     background-color: #0E1117; color: white;
-    text-align: right; padding: 10px; font-size: 14px;
+    text-align: right; padding: 10px; font-size: 14px; z-index: 1000;
 }
 </style>
 <div class="footer">© 2026 InsightTube | Built with Streamlit 💙 | Pbo7</div>

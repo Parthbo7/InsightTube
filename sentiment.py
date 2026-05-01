@@ -93,11 +93,14 @@ Return ONLY a valid JSON object, no markdown fences, no explanation outside JSON
         negative = _build(data.get("negative", []))
         neutral  = _build(data.get("neutral",  []))
 
+        total_analyzed = len(positive) + len(negative) + len(neutral)
+        
         counts = {
             "positive": len(positive),
             "negative": len(negative),
             "neutral":  len(neutral),
-            "total":    len(comments),
+            "total":    total_analyzed if total_analyzed > 0 else 1,
+            "fetched":  len(comments),
         }
 
         return {

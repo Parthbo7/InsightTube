@@ -58,6 +58,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+from components import apply_tab_styling
+apply_tab_styling()
+
 hide_default_sidebar = """
     <style>
         [data-testid="stSidebarNav"] {display: none;}
@@ -80,6 +83,9 @@ with st.sidebar:
     col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
     col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
     col1,col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
+    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
+    col1,col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
     col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
     col1,col2 = st.columns([1, 8])
@@ -88,9 +94,6 @@ with st.sidebar:
     col1,col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
     col2.page_link("pages/3_About_Us.py", label=" About Us")
-    col1,col2 = st.columns([1, 8])
-    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
-    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 # -------------------- Page Header --------------------
 col1, col2 = st.columns([2, 1])
@@ -171,9 +174,61 @@ with tab1:
         """, unsafe_allow_html=True)
 
 with tab2:
+    st.markdown("""
+    <style>
+    .profile-img-container {
+        width: 100%;
+        max-width: 250px;
+        aspect-ratio: 1;
+        margin: 0 auto;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 4px solid #3B82F6;
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background-color: #111827;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .profile-img-container:hover {
+        transform: scale(1.05);
+        box-shadow: 0 15px 35px rgba(59, 130, 246, 0.5);
+    }
+    .profile-img-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     col_img, col_info = st.columns([1, 2], gap="large")
     with col_img:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=250)
+        import os
+        import base64
+        
+        # Check for local image file
+        possible_paths = ["profile.png", "profile.jpg", "profile.jpeg", "profile.png.jpeg"]
+        img_path = next((p for p in possible_paths if os.path.exists(p)), None)
+            
+        if img_path:
+            with open(img_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            ext = "jpeg" if ("jpg" in img_path or "jpeg" in img_path) else "png"
+            st.markdown(f'''
+            <div class="profile-img-container">
+                <img src="data:image/{ext};base64,{b64}">
+            </div>
+            ''', unsafe_allow_html=True)
+        else:
+            # Fallback to default avatar
+            st.markdown(f'''
+            <div class="profile-img-container">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+            </div>
+            ''', unsafe_allow_html=True)
     with col_info:
         st.markdown("""
         <h2 style="margin-bottom: 5px;">Parth Pandurang Bulbule</h2>

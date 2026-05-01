@@ -1,15 +1,19 @@
 import requests
 import streamlit as st
 
-API_KEY = st.secrets["YOUTUBE_API_KEY"]
-
-
 def fetch_top_comments(video_id, max_results=100):
     """
     Fetch top comments for a YouTube video via the commentThreads API.
     Returns (list_of_comment_dicts, error_string).
     On success, error_string is None. On failure, list is None.
     """
+    try:
+        API_KEY = st.secrets.get("YOUTUBE_API_KEY")
+        if not API_KEY:
+            raise KeyError
+    except (KeyError, FileNotFoundError):
+        return None, "YOUTUBE_API_KEY not found in Streamlit secrets."
+
     url = "https://www.googleapis.com/youtube/v3/commentThreads"
     params = {
         "part": "snippet",

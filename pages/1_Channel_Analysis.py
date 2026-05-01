@@ -42,8 +42,36 @@ st.markdown("""
 .block-container { padding-top: 2rem; }
 [data-testid="stSidebar"] { background-color: #111827; }
 .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; }
+
+/* ── Hero & Input Card ── */
+.input-card {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 40px;
+    margin: 20px auto;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.hero-header {
+    font-size: 3rem !important;
+    font-weight: 800;
+    margin-bottom: 5px;
+    background: linear-gradient(135deg, #F8FAFC 0%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.hero-subtitle {
+    color: #94A3B8;
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+}
 </style>
 """, unsafe_allow_html=True)
+
+from components import apply_tab_styling
+apply_tab_styling()
 
 subscriber_watch_percent = 0
 upload_frequency         = 0
@@ -53,13 +81,26 @@ supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
 supabase     = create_client(supabase_url, supabase_key)
 
-st.divider()
-col1, col2 = st.columns([1, 10])
-col1.image("https://cdn-icons-png.flaticon.com/128/7172/7172401.png", width=80)
-col2.title("Channel Analysis")
-st.divider()
+st.markdown("""
+<div style="text-align: center; margin-top: 20px; animation: fadeIn 0.8s ease-out;">
+    <img src="https://cdn-icons-png.flaticon.com/128/7172/7172401.png" width="80" style="margin-bottom: 10px;">
+    <h1 class="hero-header">Channel Analysis</h1>
+    <p class="hero-subtitle">Analyze channel growth, engagement, and performance insights instantly</p>
+</div>
+""", unsafe_allow_html=True)
 
-channel_input = st.text_input("Enter YouTube Channel Name ")
+# Main Input Section
+col1, col2, col3 = st.columns([1, 6, 1])
+with col2:
+    channel_input = st.text_input("🔍 Enter YouTube Channel Name or URL", placeholder="e.g. 'MrBeast' or UCX6OQ3DkcsbYNE6H8uQQuVA")
+    
+    st.markdown("""
+    <p style="color: #64748B; font-size: 0.9rem; margin-top: -10px; margin-bottom: 20px; text-align: center;">
+        <i>Suggestions: MrBeast, Netflix, CarryMinati</i>
+    </p>
+    """, unsafe_allow_html=True)
+    
+    analyze_btn = st.button("🚀 Analyze Channel", use_container_width=True, type="primary")
 
 hide_default_sidebar = """
     <style>[data-testid="stSidebarNav"] {display: none;}</style>
@@ -81,6 +122,9 @@ with st.sidebar:
     col1.image("https://cdn-icons-png.flaticon.com/128/404/404672.png", width=40)
     col2.page_link("pages/1_Channel_Analysis.py", label="Channel Analysis")
     col1, col2 = st.columns([1, 8])
+    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
+    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
+    col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/934/934478.png", width=40)
     col2.page_link("pages/2_Channel_Compare.py", label="Channel Compare")
     col1, col2 = st.columns([1, 8])
@@ -89,9 +133,6 @@ with st.sidebar:
     col1, col2 = st.columns([1, 8])
     col1.image("https://cdn-icons-png.flaticon.com/128/9985/9985768.png", width=40)
     col2.page_link("pages/3_About_Us.py", label="About Us")
-    col1, col2 = st.columns([1, 8])
-    col1.image("https://cdn-icons-png.flaticon.com/128/2593/2593453.png", width=40)
-    col2.page_link("pages/5_Sentiment_Analysis.py", label="Sentiment Analysis")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -823,17 +864,54 @@ def run_full_channel_analysis_and_display(channel_input):
         st.subheader("📊 Performance Trends")
         
         # Views per Video - Plotly
-        fig_views = go.Figure(data=[
-            go.Bar(x=df["title"], y=df["view_count"], marker_color="#ef4444")
-        ])
-        fig_views.update_layout(title="Views per Video", xaxis_title="Video Title", yaxis_title="Views", height=450, template="plotly_dark")
+        import plotly.express as px
+        df_views = df.sort_values(by="view_count", ascending=False).head(15).copy()
+        df_views["short_title"] = df_views["title"].apply(lambda x: x[:40] + "..." if len(x) > 40 else x)
+        df_views = df_views.iloc[::-1]  # Reverse for Plotly horizontal sorting
+        
+        avg_views = df["view_count"].mean()
+
+        fig_views = px.bar(
+            df_views,
+            x="view_count",
+            y="short_title",
+            orientation="h",
+            hover_data={"title": True, "short_title": False, "view_count": ":,"},
+            color="view_count",
+            color_continuous_scale=px.colors.sequential.Reds,
+            text_auto=".2s"
+        )
+        
+        fig_views.add_vline(
+            x=avg_views, 
+            line_dash="dash", 
+            line_color="#10B981", 
+            annotation_text="Avg Views", 
+            annotation_position="bottom right"
+        )
+        
+        fig_views.update_traces(textposition="outside", cliponaxis=False)
+        fig_views.update_layout(
+            title="Top 15 Most Viewed Videos",
+            xaxis_title="Total Views",
+            yaxis_title="",
+            height=500,
+            template="plotly_dark",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False,
+            margin=dict(l=10, r=40, t=50, b=20),
+            font=dict(size=13, color="#e2e8f0"),
+            bargap=0.2
+        )
         st.plotly_chart(fig_views, use_container_width=True)
         
         # Likes and Comments - Plotly
+        df_lc = df.sort_values(by="published_at", ascending=False).head(20).copy().reset_index(drop=True)
         fig_lc = go.Figure()
-        fig_lc.add_trace(go.Scatter(x=list(range(1, len(df)+1)), y=df["like_count"], name="Likes", line=dict(color="#ef4444", width=3)))
-        fig_lc.add_trace(go.Scatter(x=list(range(1, len(df)+1)), y=df["comment_count"], name="Comments", line=dict(color="#991b1b", width=3)))
-        fig_lc.update_layout(title="Likes & Comments per Video", xaxis_title="Video Index", yaxis_title="Count", height=400, template="plotly_dark")
+        fig_lc.add_trace(go.Scatter(x=df_lc.index + 1, y=df_lc["like_count"], name="Likes", line=dict(color="#ef4444", width=3), mode='lines+markers', text=df_lc["title"], hoverinfo="text+y+name"))
+        fig_lc.add_trace(go.Scatter(x=df_lc.index + 1, y=df_lc["comment_count"], name="Comments", line=dict(color="#8B5CF6", width=3), mode='lines+markers', text=df_lc["title"], hoverinfo="text+y+name"))
+        fig_lc.update_layout(title="Likes & Comments (Last 20 Videos)", xaxis_title="Recent Video Order (1 = Newest)", yaxis_title="Count", height=450, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_lc, use_container_width=True)
 
         st.divider()
@@ -857,16 +935,16 @@ def run_full_channel_analysis_and_display(channel_input):
                 labels=_dur_counts["Category"], values=_dur_counts["Count"],
                 hole=0.5,
                 marker=dict(colors=["#fee2e2", "#fca5a5", "#ef4444"]))])
-            fig_pie.update_layout(title="Duration Distribution", height=400, template="plotly_dark")
+            fig_pie.update_layout(title="Duration Distribution", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_pie, use_container_width=True)
             
         with d_col2:
-            df = df.sort_values("published_at").reset_index(drop=True)
-            df["duration_minutes"] = df["duration"].apply(lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
+            df_dur = df.sort_values("published_at", ascending=False).head(20).copy().reset_index(drop=True)
+            df_dur["duration_minutes"] = df_dur["duration"].apply(lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
             fig_dur = go.Figure(data=[
-                go.Bar(x=list(range(1, len(df)+1)), y=df["duration_minutes"], marker_color="#991b1b")
+                go.Scatter(x=df_dur.index + 1, y=df_dur["duration_minutes"], marker_color="#8B5CF6", mode='lines+markers', text=df_dur["title"], hoverinfo="text+y")
             ])
-            fig_dur.update_layout(title="Duration by Upload Order", xaxis_title="Video Index", yaxis_title="Minutes", height=400, template="plotly_dark")
+            fig_dur.update_layout(title="Duration Trend (Last 20 Videos)", xaxis_title="Recent Video Order (1 = Newest)", yaxis_title="Minutes", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_dur, use_container_width=True)
 
         st.divider()
@@ -912,12 +990,33 @@ def run_full_channel_analysis_and_display(channel_input):
             r_col2.metric("Revenue Estimate (High)", f"₹ {_high_est:,.2f}")
             r_col3.metric("RPM (Avg)", f"₹ {_rpm:,.2f}")
             
-            fig_rev = go.Figure(data=[
-                go.Bar(x=df.sort_values("estimated_revenue", ascending=False)["title"], 
-                       y=df.sort_values("estimated_revenue", ascending=False)["estimated_revenue"], 
-                       marker_color="#ef4444")
-            ])
-            fig_rev.update_layout(title="Estimated Revenue per Video", xaxis_title="Video Title", yaxis_title="Revenue (₹)", height=450, template="plotly_dark")
+            df_rev = df.sort_values("estimated_revenue", ascending=False).head(15).copy()
+            df_rev["short_title"] = df_rev["title"].apply(lambda x: x[:35] + "..." if len(x) > 35 else x)
+            df_rev = df_rev.iloc[::-1]
+
+            fig_rev = px.bar(
+                df_rev, 
+                x="estimated_revenue", 
+                y="short_title", 
+                orientation="h",
+                hover_data={"title": True, "short_title": False, "estimated_revenue": ":,.2f"},
+                color="estimated_revenue",
+                color_continuous_scale=px.colors.sequential.Purples,
+                text_auto=".2s"
+            )
+            fig_rev.update_traces(textposition="outside", cliponaxis=False)
+            fig_rev.update_layout(
+                title="Top 15 Videos by Revenue (₹)", 
+                xaxis_title="Estimated Revenue (₹)", 
+                yaxis_title="", 
+                height=500, 
+                template="plotly_dark", 
+                plot_bgcolor="rgba(0,0,0,0)", 
+                paper_bgcolor="rgba(0,0,0,0)",
+                coloraxis_showscale=False,
+                margin=dict(l=10, r=40, t=50, b=20),
+                font=dict(size=13)
+            )
             st.plotly_chart(fig_rev, use_container_width=True)
 
         st.divider()
@@ -931,9 +1030,9 @@ def run_full_channel_analysis_and_display(channel_input):
         g_col3.metric("Growth Rate", f"{_growth_rate:.2f}%")
         
         fig_growth = go.Figure(data=[
-            go.Bar(x=["Current", "Predicted (30 Days)"], y=[current_subs, _predicted_subs], marker_color=["#fca5a5", "#ef4444"])
+            go.Bar(x=["Current", "Predicted (30 Days)"], y=[current_subs, _predicted_subs], marker_color=["#8B5CF6", "#ef4444"])
         ])
-        fig_growth.update_layout(title="Growth Prediction", height=400, template="plotly_dark")
+        fig_growth.update_layout(title="Growth Prediction", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_growth, use_container_width=True)
 
     with tab4:
@@ -1008,12 +1107,22 @@ def run_full_channel_analysis_and_display(channel_input):
 #  ENTRY POINT
 # ═════════════════════════════════════════════════════════════════════════════
 
-if st.button("Analyze Channel"):
+if analyze_btn:
     if channel_input:
-        run_full_channel_analysis_and_display(channel_input)
-        st.toast("Channel analysis completed!", icon="✅")
+        with st.spinner("🔍 Analyzing channel data... This may take a few moments."):
+            run_full_channel_analysis_and_display(channel_input)
+            st.toast("Channel analysis completed!", icon="✅")
     else:
         st.warning("Please enter a valid channel URL or ID.")
+elif not channel_input:
+    # Empty preview state
+    st.markdown("""
+    <div style="text-align: center; margin-top: 60px; padding: 40px; border: 2px dashed #334155; border-radius: 20px; opacity: 0.6; animation: fadeIn 1s ease-out;">
+        <img src="https://cdn-icons-png.flaticon.com/128/404/404672.png" width="60" style="filter: grayscale(100%); opacity: 0.5;">
+        <h3 style="color: #64748B; margin-top: 15px;">Your insights will appear here</h3>
+        <p style="color: #475569;">Enter a channel name or URL above to generate a comprehensive analytics report.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("""
 <style>
