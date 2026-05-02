@@ -379,8 +379,7 @@ if st.session_state.sentiment_results:
             colormap="Set2",
             stopwords=stopwords,
             max_words=100,
-            prefer_horizontal=0.85,
-            border_color="#1f2937",
+            prefer_horizontal=0.85
         ).generate(raw_corpus)
 
         fig_wc, ax = plt.subplots(figsize=(14, 6))

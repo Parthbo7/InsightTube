@@ -871,7 +871,7 @@ def run_full_channel_analysis_and_display(channel_input):
 
         st.divider()
         # New Chart: Viewer Journey Funnel 
-        st.subheader("Viewer Journey Funnel (New Addition)")
+        st.subheader("Viewer Journey Funnel ")
         total_views_f = df["view_count"].sum()
         total_engagements_f = df["like_count"].sum() + df["comment_count"].sum()
         impressions_f = total_views_f / 0.05 if total_views_f > 0 else 0
@@ -889,7 +889,7 @@ def run_full_channel_analysis_and_display(channel_input):
         st.subheader("📊 Performance Trends")
         
         # New Chart: Views Over Time Area Chart
-        st.markdown("##### Views Over Time (New Addition)")
+        st.markdown("##### Views Over Time ")
         fig_area = px.area(
             df, x="published_at", y="view_count",
             hover_data={"title": True},
@@ -992,7 +992,7 @@ def run_full_channel_analysis_and_display(channel_input):
             st.plotly_chart(fig_dur, use_container_width=True)
 
         # New Chart: Duration vs Engagement Scatter
-        st.markdown("##### Duration vs Engagement Correlation (New Addition)")
+        st.markdown("##### Duration vs Engagement Correlation")
         df_scatter = df.copy()
         df_scatter["duration_minutes"] = df_scatter["duration"].apply(lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
         fig_scatter = px.scatter(
@@ -1012,7 +1012,7 @@ def run_full_channel_analysis_and_display(channel_input):
         st.plotly_chart(fig_scatter, use_container_width=True)
 
         st.divider()
-        st.subheader("📜 Recent Video Analytics (Original)")
+        st.subheader("📜 Recent Video Analytics")
         st.data_editor(
             df.reset_index(drop=True),
             column_config={
