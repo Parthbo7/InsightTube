@@ -753,6 +753,9 @@ def generate_pdf_report(channel_info, video_analytics, df, predicted_subs,
 # ═════════════════════════════════════════════════════════════════════════════
 
 def run_full_channel_analysis_and_display(channel_input):
+    import plotly.express as px
+    import plotly.graph_objects as go
+    
     # shared state variables captured for PDF
     _sub_watch_pct   = 0
     _upload_freq     = 0
@@ -793,10 +796,15 @@ def run_full_channel_analysis_and_display(channel_input):
         st.warning("No video analytics data found.")
         return
 
+    # Data prep
+    df["published_at"] = pd.to_datetime(df["published_at"])
+    df = df.sort_values("published_at").reset_index(drop=True)
+    
     # ── Tabbed Layout ─────────────────────────────────────────────────────────
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🎬 Video Performance", "💰 Revenue & Growth", "🧠 AI Insights"])
 
     with tab1:
+        # Original Metrics
         col1, col2, col3 = st.columns(3)
         col1.metric("Subscribers", f"{int(channel_info['subscriber_count']):,}")
         col2.metric("Total Views",  f"{int(channel_info['view_count']):,}")
@@ -815,14 +823,14 @@ def run_full_channel_analysis_and_display(channel_input):
             st.markdown(f"""
             <div style="background-color: #1f2937; padding: 20px; border-radius: 10px; height: 100%;">
                 <h4 style="margin-top: 0;">📅 Channel Info</h4>
-                <p><b>Published At:</b> {channel_info['published_at']}</p>
+                <p><b>Published At:</b> {channel_info['published_at'].strftime('%Y-%m-%d') if hasattr(channel_info['published_at'], 'strftime') else channel_info['published_at']}</p>
                 <p><b>Channel ID:</b> {channel_id}</p>
             </div>
             """, unsafe_allow_html=True)
 
         st.divider()
         
-        # Engagement Gauges
+        # Original Engagement Gauges
         top_10_df        = df.sort_values(by="view_count", ascending=False).head(10)
         _avg_engagement  = top_10_df["engagement_per_1000"].mean()
         
@@ -833,16 +841,17 @@ def run_full_channel_analysis_and_display(channel_input):
         except (ValueError, TypeError):
             _sub_watch_pct = 0
 
+        st.subheader("Gauge Metrics (Original)")
         g_col1, g_col2 = st.columns(2)
         with g_col1:
             fig_eng = go.Figure(go.Indicator(
                 mode="gauge+number", value=_avg_engagement,
-                title={"text": "Engagement / 1000 Views", "font": {"size": 18}},
-                gauge={"axis": {"range": [0, 200]}, "bar": {"color": "#ef4444"},
-                       "steps": [{"range": [0,50], "color": "#fee2e2"},
-                                  {"range": [50,100], "color": "#fecaca"},
-                                  {"range": [100,150], "color": "#fca5a5"},
-                                  {"range": [150,200], "color": "#ef4444"}]}))
+                title={"text": "Engagement / 1000 Views", "font": {"size": 18, "color": "#E2E8F0"}},
+                gauge={"axis": {"range": [0, 200]}, "bar": {"color": "#6366F1"},
+                       "steps": [{"range": [0,50], "color": "rgba(99, 102, 241, 0.1)"},
+                                  {"range": [50,100], "color": "rgba(99, 102, 241, 0.3)"},
+                                  {"range": [100,150], "color": "rgba(99, 102, 241, 0.6)"},
+                                  {"range": [150,200], "color": "rgba(99, 102, 241, 0.9)"}]}))
             fig_eng.update_layout(margin=dict(l=20, r=20, t=50, b=20), height=300, paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"})
             st.plotly_chart(fig_eng, use_container_width=True)
 
@@ -850,21 +859,54 @@ def run_full_channel_analysis_and_display(channel_input):
             fig_subs = go.Figure(go.Indicator(
                 mode="gauge+number", value=_sub_watch_pct,
                 number={"suffix": "%"},
-                title={"text": "Subscriber Watch %", "font": {"size": 18}},
-                gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#ef4444"},
-                       "steps": [{"range": [0,20], "color": "#fee2e2"},
-                                  {"range": [20,40], "color": "#fecaca"},
-                                  {"range": [40,60], "color": "#fca5a5"},
-                                  {"range": [60,80], "color": "#ef4444"},
-                                  {"range": [80,100], "color": "#b91c1c"}]}))
+                title={"text": "Subscriber Watch %", "font": {"size": 18, "color": "#E2E8F0"}},
+                gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#10B981"},
+                       "steps": [{"range": [0,20], "color": "rgba(16, 185, 129, 0.1)"},
+                                  {"range": [20,40], "color": "rgba(16, 185, 129, 0.3)"},
+                                  {"range": [40,60], "color": "rgba(16, 185, 129, 0.6)"},
+                                  {"range": [60,80], "color": "rgba(16, 185, 129, 0.9)"},
+                                  {"range": [80,100], "color": "#10B981"}]}))
             fig_subs.update_layout(margin=dict(l=20, r=20, t=50, b=20), height=300, paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"})
             st.plotly_chart(fig_subs, use_container_width=True)
+
+        st.divider()
+        # New Chart: Viewer Journey Funnel 
+        st.subheader("Viewer Journey Funnel (New Addition)")
+        total_views_f = df["view_count"].sum()
+        total_engagements_f = df["like_count"].sum() + df["comment_count"].sum()
+        impressions_f = total_views_f / 0.05 if total_views_f > 0 else 0
+        fig_funnel = go.Figure(go.Funnel(
+            y=["Estimated Impressions", "Views", "Engagements"],
+            x=[impressions_f, total_views_f, total_engagements_f],
+            textinfo="value+percent initial",
+            marker={"color": ["#4F46E5", "#6366F1", "#818CF8"]}
+        ))
+        fig_funnel.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, t=20, b=0), height=300)
+        st.plotly_chart(fig_funnel, use_container_width=True)
+
 
     with tab2:
         st.subheader("📊 Performance Trends")
         
-        # Views per Video - Plotly
-        import plotly.express as px
+        # New Chart: Views Over Time Area Chart
+        st.markdown("##### Views Over Time (New Addition)")
+        fig_area = px.area(
+            df, x="published_at", y="view_count",
+            hover_data={"title": True},
+            color_discrete_sequence=["#6366F1"],
+        )
+        fig_area.update_traces(fillcolor="rgba(99, 102, 241, 0.2)", line=dict(width=3, shape="spline"))
+        fig_area.update_layout(
+            xaxis_title="", yaxis_title="Views",
+            template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0, r=0, t=10, b=0), height=300,
+            xaxis=dict(showgrid=False), yaxis=dict(gridcolor="rgba(255,255,255,0.05)")
+        )
+        st.plotly_chart(fig_area, use_container_width=True)
+        st.divider()
+
+        # Original Views per Video Chart (Enhanced styling)
+        st.markdown("##### Top 15 Most Viewed Videos (Original)")
         df_views = df.sort_values(by="view_count", ascending=False).head(15).copy()
         df_views["short_title"] = df_views["title"].apply(lambda x: x[:40] + "..." if len(x) > 40 else x)
         df_views = df_views.iloc[::-1]  # Reverse for Plotly horizontal sorting
@@ -878,7 +920,7 @@ def run_full_channel_analysis_and_display(channel_input):
             orientation="h",
             hover_data={"title": True, "short_title": False, "view_count": ":,"},
             color="view_count",
-            color_continuous_scale=px.colors.sequential.Reds,
+            color_continuous_scale=px.colors.sequential.Teal,
             text_auto=".2s"
         )
         
@@ -890,9 +932,8 @@ def run_full_channel_analysis_and_display(channel_input):
             annotation_position="bottom right"
         )
         
-        fig_views.update_traces(textposition="outside", cliponaxis=False)
+        fig_views.update_traces(textposition="outside", cliponaxis=False, marker_line_width=0)
         fig_views.update_layout(
-            title="Top 15 Most Viewed Videos",
             xaxis_title="Total Views",
             yaxis_title="",
             height=500,
@@ -900,25 +941,25 @@ def run_full_channel_analysis_and_display(channel_input):
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             coloraxis_showscale=False,
-            margin=dict(l=10, r=40, t=50, b=20),
+            margin=dict(l=10, r=40, t=10, b=20),
             font=dict(size=13, color="#e2e8f0"),
             bargap=0.2
         )
         st.plotly_chart(fig_views, use_container_width=True)
         
-        # Likes and Comments - Plotly
+        # Original Likes and Comments Chart (Enhanced styling)
+        st.markdown("##### Likes & Comments (Original)")
         df_lc = df.sort_values(by="published_at", ascending=False).head(20).copy().reset_index(drop=True)
         fig_lc = go.Figure()
-        fig_lc.add_trace(go.Scatter(x=df_lc.index + 1, y=df_lc["like_count"], name="Likes", line=dict(color="#ef4444", width=3), mode='lines+markers', text=df_lc["title"], hoverinfo="text+y+name"))
-        fig_lc.add_trace(go.Scatter(x=df_lc.index + 1, y=df_lc["comment_count"], name="Comments", line=dict(color="#8B5CF6", width=3), mode='lines+markers', text=df_lc["title"], hoverinfo="text+y+name"))
-        fig_lc.update_layout(title="Likes & Comments (Last 20 Videos)", xaxis_title="Recent Video Order (1 = Newest)", yaxis_title="Count", height=450, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+        fig_lc.add_trace(go.Scatter(x=df_lc.index + 1, y=df_lc["like_count"], name="Likes", line=dict(color="#10B981", width=3, shape="spline"), mode='lines+markers', text=df_lc["title"], hoverinfo="text+y+name"))
+        fig_lc.add_trace(go.Scatter(x=df_lc.index + 1, y=df_lc["comment_count"], name="Comments", line=dict(color="#6366F1", width=3, shape="spline"), mode='lines+markers', text=df_lc["title"], hoverinfo="text+y+name"))
+        fig_lc.update_layout(xaxis_title="Recent Video Order (1 = Newest)", yaxis_title="Count", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, t=20, b=0))
         st.plotly_chart(fig_lc, use_container_width=True)
 
         st.divider()
         
-        # Duration Analysis
+        # Original Duration Insights Section
         st.subheader("⏳ Duration Insights")
-        d_col1, d_col2 = st.columns(2)
         
         def categorize_duration(d):
             s = parse_iso_duration(d)
@@ -929,42 +970,64 @@ def run_full_channel_analysis_and_display(channel_input):
         df["duration_category"] = df["duration"].apply(categorize_duration)
         _dur_counts = df["duration_category"].value_counts().reset_index()
         _dur_counts.columns = ["Category", "Count"]
-        
+
+        d_col1, d_col2 = st.columns(2)
         with d_col1:
+            # Original Pie Chart (Enhanced to Donut)
             fig_pie = go.Figure(data=[go.Pie(
                 labels=_dur_counts["Category"], values=_dur_counts["Count"],
-                hole=0.5,
-                marker=dict(colors=["#fee2e2", "#fca5a5", "#ef4444"]))])
-            fig_pie.update_layout(title="Duration Distribution", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+                hole=0.6,
+                marker=dict(colors=["#14B8A6", "#0EA5E9", "#6366F1"]))])
+            fig_pie.update_layout(title="Duration Distribution (Original)", height=350, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=40, b=0, l=0, r=0))
             st.plotly_chart(fig_pie, use_container_width=True)
             
         with d_col2:
+            # Original Line Chart (Enhanced curves)
             df_dur = df.sort_values("published_at", ascending=False).head(20).copy().reset_index(drop=True)
             df_dur["duration_minutes"] = df_dur["duration"].apply(lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
             fig_dur = go.Figure(data=[
-                go.Scatter(x=df_dur.index + 1, y=df_dur["duration_minutes"], marker_color="#8B5CF6", mode='lines+markers', text=df_dur["title"], hoverinfo="text+y")
+                go.Scatter(x=df_dur.index + 1, y=df_dur["duration_minutes"], marker_color="#8B5CF6", line=dict(shape="spline", width=3), mode='lines+markers', text=df_dur["title"], hoverinfo="text+y")
             ])
-            fig_dur.update_layout(title="Duration Trend (Last 20 Videos)", xaxis_title="Recent Video Order (1 = Newest)", yaxis_title="Minutes", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+            fig_dur.update_layout(title="Duration Trend (Last 20 Videos - Original)", xaxis_title="Recent Video Order (1 = Newest)", yaxis_title="Minutes", height=350, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=40, b=0, l=0, r=0))
             st.plotly_chart(fig_dur, use_container_width=True)
 
+        # New Chart: Duration vs Engagement Scatter
+        st.markdown("##### Duration vs Engagement Correlation (New Addition)")
+        df_scatter = df.copy()
+        df_scatter["duration_minutes"] = df_scatter["duration"].apply(lambda x: parse_iso_duration(x) / 60 if pd.notnull(x) else 0)
+        fig_scatter = px.scatter(
+            df_scatter, x="duration_minutes", y="total_engagement_rate",
+            size="view_count", color="total_engagement_rate",
+            hover_data={"title": True},
+            color_continuous_scale=px.colors.sequential.Teal,
+            size_max=30
+        )
+        fig_scatter.update_layout(
+            xaxis_title="Duration (Minutes)", yaxis_title="Engagement Rate (%)",
+            template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0, r=0, t=10, b=0), coloraxis_showscale=False,
+            height=350,
+            xaxis=dict(showgrid=False), yaxis=dict(gridcolor="rgba(255,255,255,0.05)")
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
         st.divider()
-        st.subheader("📜 Recent Video Analytics")
-        # Upgrade to st.data_editor
+        st.subheader("📜 Recent Video Analytics (Original)")
         st.data_editor(
             df.reset_index(drop=True),
             column_config={
                 "title": "Video Title",
-                "published_at": "Published Date",
+                "published_at": st.column_config.DateColumn("Published Date", format="MMM DD, YYYY"),
                 "view_count": st.column_config.NumberColumn("Views", format="%d 👀"),
                 "like_count": st.column_config.NumberColumn("Likes", format="%d 👍"),
                 "comment_count": st.column_config.NumberColumn("Comments", format="%d 💬"),
-                "total_engagement_rate": st.column_config.NumberColumn("Eng. Rate", format="%.2f %%"),
+                "total_engagement_rate": st.column_config.ProgressColumn("Eng. Rate (%)", format="%.2f", min_value=0, max_value=20),
                 "engagement_per_1000": st.column_config.NumberColumn("Eng./1000", format="%.2f"),
                 "view_subscriber_ratio": st.column_config.NumberColumn("VSR", format="%.2f %%"),
             },
             hide_index=True,
             use_container_width=True,
-            disabled=True # Acts as a viewer
+            disabled=True
         )
 
     with tab3:
@@ -994,6 +1057,7 @@ def run_full_channel_analysis_and_display(channel_input):
             df_rev["short_title"] = df_rev["title"].apply(lambda x: x[:35] + "..." if len(x) > 35 else x)
             df_rev = df_rev.iloc[::-1]
 
+            # Original Revenue Chart (Enhanced colors)
             fig_rev = px.bar(
                 df_rev, 
                 x="estimated_revenue", 
@@ -1004,9 +1068,9 @@ def run_full_channel_analysis_and_display(channel_input):
                 color_continuous_scale=px.colors.sequential.Purples,
                 text_auto=".2s"
             )
-            fig_rev.update_traces(textposition="outside", cliponaxis=False)
+            fig_rev.update_traces(textposition="outside", cliponaxis=False, marker_line_width=0)
             fig_rev.update_layout(
-                title="Top 15 Videos by Revenue (₹)", 
+                title="Top 15 Videos by Revenue (₹) (Original)", 
                 xaxis_title="Estimated Revenue (₹)", 
                 yaxis_title="", 
                 height=500, 
@@ -1029,10 +1093,11 @@ def run_full_channel_analysis_and_display(channel_input):
         g_col2.metric("Predicted (30 Days)", f"{_predicted_subs:,}")
         g_col3.metric("Growth Rate", f"{_growth_rate:.2f}%")
         
+        # Original Growth Chart
         fig_growth = go.Figure(data=[
-            go.Bar(x=["Current", "Predicted (30 Days)"], y=[current_subs, _predicted_subs], marker_color=["#8B5CF6", "#ef4444"])
+            go.Bar(x=["Current", "Predicted (30 Days)"], y=[current_subs, _predicted_subs], marker_color=["#6366F1", "#10B981"], marker_line_width=0)
         ])
-        fig_growth.update_layout(title="Growth Prediction", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+        fig_growth.update_layout(title="Growth Prediction (Original)", height=400, template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_growth, use_container_width=True)
 
     with tab4:
@@ -1046,7 +1111,7 @@ def run_full_channel_analysis_and_display(channel_input):
         # Upload Frequency
         try:
             total_videos  = int(channel_info["video_count"])
-            published_dt  = datetime.strptime(channel_info["published_at"][:10], "%Y-%m-%d").date()
+            published_dt  = pd.to_datetime(channel_info["published_at"][:10]).date()
             current_date  = datetime.now().date()
             channel_age_months = max(1, (current_date.year - published_dt.year) * 12 + (current_date.month - published_dt.month))
             _upload_freq = total_videos / channel_age_months
@@ -1068,7 +1133,7 @@ def run_full_channel_analysis_and_display(channel_input):
             st.info(insight)
             
         st.divider()
-        # Best Performing Video
+        # Original Best Performing Video
         df_bp = df.copy()
         df_bp["performance_score"] = (df_bp["total_engagement_rate"] * 0.4 + df_bp["engagement_per_1000"] * 0.3 + df_bp["view_subscriber_ratio"] * 0.3)
         best_video = df_bp.loc[df_bp["performance_score"].idxmax()]
@@ -1080,7 +1145,7 @@ def run_full_channel_analysis_and_display(channel_input):
             <div style="background-color: #1f2937; padding: 20px; border-radius: 10px;">
                 <h4>{best_video['title']}</h4>
                 <p><b>Views:</b> {best_video['view_count']:,} | <b>Likes:</b> {best_video['like_count']:,}</p>
-                <p><b>Published:</b> {best_video['published_at']}</p>
+                <p><b>Published:</b> {best_video['published_at'].strftime('%Y-%m-%d') if hasattr(best_video['published_at'], 'strftime') else best_video['published_at']}</p>
             </div>
             """, unsafe_allow_html=True)
         with bv_col2:
